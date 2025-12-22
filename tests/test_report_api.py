@@ -20,14 +20,14 @@ def test_morning_brief_endpoint():
     assert len(data["markdown"]) > 0
 
     # Check markdown content
-    assert "Crypto Morning Brief" in data["markdown"]
-    assert "Market Summary" in data["markdown"]
-    assert "Market Regime" in data["markdown"]
-    assert "Key Signals" in data["markdown"]
-    assert "Key Metrics" in data["markdown"]
-    assert "News & Events" in data["markdown"]
-    assert "Market Scenarios" in data["markdown"]
-    assert "Disclaimer" in data["markdown"]
+    assert "암호화폐 모닝 브리프" in data["markdown"]
+    assert "시장 요약" in data["markdown"]
+    assert "시장 국면" in data["markdown"]
+    assert "주요 시그널" in data["markdown"]
+    assert "주요 지표" in data["markdown"]
+    assert "뉴스 & 이벤트" in data["markdown"]
+    assert "시장 시나리오" in data["markdown"]
+    assert "면책 조항" in data["markdown"]
 
 
 def test_morning_brief_with_date():

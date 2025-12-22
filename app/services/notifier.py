@@ -214,7 +214,10 @@ class TelegramNotifier:
                 if not in_table:
                     in_table = True
                 
-                cells = [cell.strip() for cell in line.split("|") if cell.strip()]
+                # Extract cells (handle leading/trailing |)
+                parts = line.split("|")
+                # Remove empty strings from start/end (from leading/trailing |)
+                cells = [part.strip() for part in parts if part.strip()]
                 if cells:
                     table_rows.append(cells)
             else:

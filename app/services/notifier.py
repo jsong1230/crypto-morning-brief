@@ -173,12 +173,12 @@ class TelegramNotifier:
         # Links (basic)
         text = re.sub(r"\[(.+?)\]\((.+?)\)", r'<a href="\2">\1</a>', text)
 
-        # Tables (convert to HTML table format for Telegram)
+        # Tables (Telegram HTML doesn't support <table> tags, convert to formatted text)
+        # Telegram HTML parse mode only supports: <b>, <i>, <u>, <s>, <a>, <code>, <pre>
         lines = text.split("\n")
         result_lines = []
         in_table = False
         table_rows = []
-        is_first_row = True
 
         for line in lines:
             # Check if this is a separator line (contains only dashes, colons, spaces, and pipes)
@@ -189,33 +189,84 @@ class TelegramNotifier:
                 # Table row
                 if not in_table:
                     in_table = True
-                    result_lines.append("<table>")
-                    is_first_row = True
                 
                 cells = [cell.strip() for cell in line.split("|") if cell.strip()]
                 if cells:
-                    # First row is header
-                    if is_first_row:
-                        table_rows.append("<tr>" + "".join([f"<th>{cell}</th>" for cell in cells]) + "</tr>")
-                        is_first_row = False
-                    else:
-                        table_rows.append("<tr>" + "".join([f"<td>{cell}</td>" for cell in cells]) + "</tr>")
+                    table_rows.append(cells)
             else:
                 # End of table (separator or non-table line)
-                if in_table:
-                    in_table = False
-                    result_lines.extend(table_rows)
-                    result_lines.append("</table>")
+                if in_table and table_rows:
+                    # Format table as text with proper alignment
+                    if table_rows:
+                        # Calculate column widths
+                        num_cols = max(len(row) for row in table_rows)
+                        col_widths = [0] * num_cols
+                        for row in table_rows:
+                            for i, cell in enumerate(row):
+                                if i < num_cols:
+                                    col_widths[i] = max(col_widths[i], len(cell))
+                        
+                        # Format header (first row) with bold
+                        if table_rows:
+                            header = table_rows[0]
+                            header_parts = []
+                            for i, cell in enumerate(header):
+                                width = col_widths[i] if i < len(col_widths) else len(cell)
+                                header_parts.append(f"<b>{cell.ljust(width)}</b>")
+                            result_lines.append(" | ".join(header_parts))
+                            
+                            # Add separator line
+                            separator_parts = []
+                            for i in range(num_cols):
+                                width = col_widths[i] if i < len(col_widths) else 10
+                                separator_parts.append("-" * width)
+                            result_lines.append(" | ".join(separator_parts))
+                            
+                            # Format data rows
+                            for row in table_rows[1:]:
+                                row_parts = []
+                                for i, cell in enumerate(row):
+                                    width = col_widths[i] if i < len(col_widths) else len(cell)
+                                    row_parts.append(cell.ljust(width))
+                                result_lines.append(" | ".join(row_parts))
+                    
                     table_rows = []
-                    is_first_row = True
+                    in_table = False
+                
                 # Skip separator lines, add other lines
                 if not is_separator:
                     result_lines.append(line)
 
         # Close table if still open
-        if in_table:
-            result_lines.extend(table_rows)
-            result_lines.append("</table>")
+        if in_table and table_rows:
+            # Format remaining table
+            num_cols = max(len(row) for row in table_rows)
+            col_widths = [0] * num_cols
+            for row in table_rows:
+                for i, cell in enumerate(row):
+                    if i < num_cols:
+                        col_widths[i] = max(col_widths[i], len(cell))
+            
+            if table_rows:
+                header = table_rows[0]
+                header_parts = []
+                for i, cell in enumerate(header):
+                    width = col_widths[i] if i < len(col_widths) else len(cell)
+                    header_parts.append(f"<b>{cell.ljust(width)}</b>")
+                result_lines.append(" | ".join(header_parts))
+                
+                separator_parts = []
+                for i in range(num_cols):
+                    width = col_widths[i] if i < len(col_widths) else 10
+                    separator_parts.append("-" * width)
+                result_lines.append(" | ".join(separator_parts))
+                
+                for row in table_rows[1:]:
+                    row_parts = []
+                    for i, cell in enumerate(row):
+                        width = col_widths[i] if i < len(col_widths) else len(cell)
+                        row_parts.append(cell.ljust(width))
+                    result_lines.append(" | ".join(row_parts))
 
         return "\n".join(result_lines)
 

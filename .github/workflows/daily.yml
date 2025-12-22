@@ -37,6 +37,18 @@ jobs:
           PROVIDER: "mock"
           LOG_LEVEL: "INFO"
         run: |
+          echo "Checking Telegram configuration..."
+          if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+            echo "❌ ERROR: TELEGRAM_BOT_TOKEN secret is not set!"
+            exit 1
+          fi
+          if [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "❌ ERROR: TELEGRAM_CHAT_ID secret is not set!"
+            exit 1
+          fi
+          echo "✅ Telegram secrets are set"
+          echo "Bot token: ${TELEGRAM_BOT_TOKEN:0:20}..."
+          echo "Chat ID: $TELEGRAM_CHAT_ID"
           python scripts/run_daily_report.py
 
       - name: Upload report artifact

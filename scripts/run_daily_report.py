@@ -94,16 +94,26 @@ async def generate_daily_report(
     # Send to Telegram if enabled
     from app.config import settings
 
+    logger.info(f"Telegram settings: SEND_TELEGRAM={settings.send_telegram}")
+    logger.info(f"Telegram configured: {telegram_notifier.is_configured()}")
+    
     if settings.send_telegram:
         if telegram_notifier.is_configured():
             logger.info("Sending report to Telegram...")
+            logger.info(f"Bot token: {telegram_notifier.bot_token[:20]}...")
+            logger.info(f"Chat ID: {telegram_notifier.chat_id}")
             try:
                 telegram_notifier.send(markdown)
                 logger.info("Report sent to Telegram successfully")
             except Exception as e:
-                logger.warning(f"Error sending Telegram notification: {str(e)}")
+                logger.error(f"Error sending Telegram notification: {str(e)}", exc_info=True)
         else:
-            logger.warning("Telegram notifier is not configured")
+            logger.error(
+                f"Telegram notifier is not configured. "
+                f"bot_token={'set' if telegram_notifier.bot_token else 'missing'}, "
+                f"chat_id={'set' if telegram_notifier.chat_id else 'missing'}, "
+                f"enabled={telegram_notifier.enabled}"
+            )
     else:
         logger.info("Telegram notifier is disabled (SEND_TELEGRAM=false)")
 

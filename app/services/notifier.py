@@ -44,14 +44,21 @@ class TelegramNotifier:
             Errors are logged as warnings and do not raise exceptions.
         """
         if not self.is_configured():
-            logger.warning("Telegram notifier is not configured or disabled")
+            logger.error(
+                f"Telegram notifier is not configured or disabled. "
+                f"bot_token={'set' if self.bot_token else 'missing'}, "
+                f"chat_id={'set' if self.chat_id else 'missing'}, "
+                f"enabled={self.enabled}"
+            )
             return
 
         # Convert markdown to HTML if needed
         formatted_text = self._format_text(text)
+        logger.info(f"Formatted message length: {len(formatted_text)} characters")
 
         # Check length and split if needed
         if len(formatted_text) > MAX_MESSAGE_LENGTH:
+            logger.info(f"Message exceeds {MAX_MESSAGE_LENGTH} chars, splitting...")
             self.split_and_send(text)
             return
 
@@ -261,6 +268,7 @@ class TelegramNotifier:
         }
 
         try:
+            logger.info(f"Sending Telegram message to chat_id={self.chat_id}, length={len(text)}")
             response = requests.post(url, json=payload, timeout=10)
             response.raise_for_status()
             result = response.json()
@@ -268,14 +276,17 @@ class TelegramNotifier:
             if result.get("ok"):
                 logger.info("Telegram message sent successfully")
             else:
-                logger.warning(
-                    f"Telegram API returned error: {result.get('description', 'Unknown error')}"
+                error_desc = result.get("description", "Unknown error")
+                error_code = result.get("error_code", "N/A")
+                logger.error(
+                    f"Telegram API returned error: [{error_code}] {error_desc}. "
+                    f"Response: {result}"
                 )
 
         except requests.exceptions.RequestException as e:
-            logger.warning(f"Failed to send Telegram message: {str(e)}")
+            logger.error(f"Failed to send Telegram message: {str(e)}", exc_info=True)
         except Exception as e:
-            logger.warning(f"Unexpected error sending Telegram message: {str(e)}")
+            logger.error(f"Unexpected error sending Telegram message: {str(e)}", exc_info=True)
 
 
 # Global instance

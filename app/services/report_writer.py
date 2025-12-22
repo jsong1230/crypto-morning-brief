@@ -33,46 +33,46 @@ class ReportWriter:
         lines = []
 
         # 1. Title
-        lines.append(f"# Crypto Morning Brief — {date} (KST)")
+        lines.append(f"# 암호화폐 모닝 브리프 — {date} (KST)")
         lines.append("")
 
         # 2. Market One-liner Summary
-        lines.append("## 📊 Market Summary")
+        lines.append("## 📊 시장 요약")
         lines.append("")
         summary = self._generate_market_summary(spot_snapshot)
         lines.append(summary)
         lines.append("")
 
         # 3. Regime
-        lines.append("## 🎯 Market Regime")
+        lines.append("## 🎯 시장 국면")
         lines.append("")
         regime_section = self._generate_regime_section(regime)
         lines.append(regime_section)
         lines.append("")
 
         # 4. Signals Top 5
-        lines.append("## ⚠️ Key Signals")
+        lines.append("## ⚠️ 주요 시그널")
         lines.append("")
         signals_section = self._generate_signals_section(signals)
         lines.append(signals_section)
         lines.append("")
 
         # 5. Key Metrics Table
-        lines.append("## 📈 Key Metrics")
+        lines.append("## 📈 주요 지표")
         lines.append("")
         metrics_section = self._generate_metrics_section(spot_snapshot, derivatives_snapshot)
         lines.append(metrics_section)
         lines.append("")
 
         # 6. News/Events Summary
-        lines.append("## 📰 News & Events")
+        lines.append("## 📰 뉴스 & 이벤트")
         lines.append("")
         news_section = self._generate_news_section(news_snapshot)
         lines.append(news_section)
         lines.append("")
 
         # 7. Scenarios
-        lines.append("## 🔮 Market Scenarios")
+        lines.append("## 🔮 시장 시나리오")
         lines.append("")
         scenarios_section = self._generate_scenarios_section(
             spot_snapshot, derivatives_snapshot, signals
@@ -81,22 +81,21 @@ class ReportWriter:
         lines.append("")
 
         # 8. Disclaimer
-        lines.append("## ⚠️ Disclaimer")
+        lines.append("## ⚠️ 면책 조항")
         lines.append("")
         lines.append(
-            "This report is for research purposes only and does not constitute "
-            "investment advice. The information provided is based on market data "
-            "and technical analysis, and should not be used as the sole basis "
-            "for investment decisions. Always conduct your own research and "
-            "consult with a qualified financial advisor before making any "
-            "investment decisions."
+            "본 리포트는 리서치 목적으로만 제공되며 투자 조언을 구성하지 않습니다. "
+            "제공된 정보는 시장 데이터 및 기술적 분석을 기반으로 하며, "
+            "투자 결정의 유일한 근거로 사용되어서는 안 됩니다. "
+            "항상 자체적인 리서치를 수행하고, 투자 결정을 내리기 전에 "
+            "자격을 갖춘 재무 고문과 상담하시기 바랍니다."
         )
         lines.append("")
 
         # Footer
         lines.append("---")
         lines.append("")
-        lines.append(f"*Report generated at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}*")
+        lines.append(f"*리포트 생성 시간: {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S UTC')}*")
 
         return "\n".join(lines)
 
@@ -120,11 +119,11 @@ class ReportWriter:
 
         # Add market sentiment
         if btc_change > 0 and eth_change > 0:
-            summary += " — Market showing bullish momentum"
+            summary += " — 시장이 상승 모멘텀을 보이고 있음"
         elif btc_change < 0 and eth_change < 0:
-            summary += " — Market under selling pressure"
+            summary += " — 시장이 매도 압력을 받고 있음"
         else:
-            summary += " — Mixed signals in the market"
+            summary += " — 시장에 혼재된 신호"
 
         return summary
 
@@ -135,28 +134,28 @@ class ReportWriter:
 
         # Regime emoji and description
         regime_map = {
-            "risk_on": ("🟢", "Risk-On", "Market participants are showing risk appetite"),
-            "neutral": ("🟡", "Neutral", "Market is in a balanced state"),
-            "risk_off": ("🔴", "Risk-Off", "Market participants are risk-averse"),
+            "risk_on": ("🟢", "리스크 온", "시장 참여자들이 위험 선호 성향을 보이고 있음"),
+            "neutral": ("🟡", "중립", "시장이 균형 상태에 있음"),
+            "risk_off": ("🔴", "리스크 오프", "시장 참여자들이 위험 회피 성향을 보이고 있음"),
         }
 
-        emoji, name, desc = regime_map.get(label, ("🟡", "Neutral", "Unknown"))
+        emoji, name, desc = regime_map.get(label, ("🟡", "중립", "알 수 없음"))
 
         lines = [f"**{emoji} {name}** — {desc}", ""]
 
         if rationale:
-            lines.append("**Key Factors:**")
+            lines.append("**주요 요인:**")
             for item in rationale[:5]:  # Limit to 5 items
                 lines.append(f"- {item}")
         else:
-            lines.append("No significant factors identified.")
+            lines.append("중요한 요인이 확인되지 않았습니다.")
 
         return "\n".join(lines)
 
     def _generate_signals_section(self, signals: list[dict[str, Any]]) -> str:
         """Generate signals section (Top 5, critical/warn prioritized)."""
         if not signals:
-            return "No significant signals detected at this time."
+            return "현재 시점에서 중요한 시그널이 감지되지 않았습니다."
 
         # Sort signals: critical > warn > info
         level_priority = {"critical": 0, "warn": 1, "info": 2}
@@ -198,29 +197,29 @@ class ReportWriter:
         if btc_spot:
             lines.append("### BTC")
             lines.append("")
-            lines.append("| Metric | Value |")
-            lines.append("|--------|-------|")
-            lines.append(f"| Price | ${btc_spot.get('price', 0):,.2f} |")
-            lines.append(f"| 24h Change | {btc_spot.get('change_24h', 0):+.2f}% |")
-            lines.append(f"| 24h Volume | ${btc_spot.get('volume_24h', 0):,.0f} |")
-            lines.append(f"| Market Cap | ${btc_spot.get('market_cap', 0):,.0f} |")
-            lines.append(f"| 24h High | ${btc_spot.get('high_24h', 0):,.2f} |")
-            lines.append(f"| 24h Low | ${btc_spot.get('low_24h', 0):,.2f} |")
+            lines.append("| 지표 | 값 |")
+            lines.append("|------|-----|")
+            lines.append(f"| 가격 | ${btc_spot.get('price', 0):,.2f} |")
+            lines.append(f"| 24시간 변동 | {btc_spot.get('change_24h', 0):+.2f}% |")
+            lines.append(f"| 24시간 거래량 | ${btc_spot.get('volume_24h', 0):,.0f} |")
+            lines.append(f"| 시가총액 | ${btc_spot.get('market_cap', 0):,.0f} |")
+            lines.append(f"| 24시간 고가 | ${btc_spot.get('high_24h', 0):,.2f} |")
+            lines.append(f"| 24시간 저가 | ${btc_spot.get('low_24h', 0):,.2f} |")
 
             if btc_deriv:
                 lines.append(
-                    f"| Funding Rate (8h) | {btc_deriv.get('funding_rate', 0) * 100:.4f}% |"
+                    f"| 펀딩 레이트 (8h) | {btc_deriv.get('funding_rate', 0) * 100:.4f}% |"
                 )
                 lines.append(
-                    f"| Funding Rate (24h) | {btc_deriv.get('funding_rate_24h', 0) * 100:.4f}% |"
+                    f"| 펀딩 레이트 (24h) | {btc_deriv.get('funding_rate_24h', 0) * 100:.4f}% |"
                 )
-                lines.append(f"| Open Interest | ${btc_deriv.get('open_interest_usd', 0):,.0f} |")
-                lines.append(f"| Long/Short Ratio | {btc_deriv.get('long_short_ratio', 0):.3f} |")
+                lines.append(f"| 미결제약정 | ${btc_deriv.get('open_interest_usd', 0):,.0f} |")
+                lines.append(f"| 롱/숏 비율 | {btc_deriv.get('long_short_ratio', 0):.3f} |")
                 lines.append(
-                    f"| Long Liquidation (24h) | ${btc_deriv.get('long_liquidation_24h', 0):,.0f} |"
+                    f"| 롱 청산 (24h) | ${btc_deriv.get('long_liquidation_24h', 0):,.0f} |"
                 )
                 lines.append(
-                    f"| Short Liquidation (24h) | ${btc_deriv.get('short_liquidation_24h', 0):,.0f} |"
+                    f"| 숏 청산 (24h) | ${btc_deriv.get('short_liquidation_24h', 0):,.0f} |"
                 )
 
             lines.append("")
@@ -232,29 +231,29 @@ class ReportWriter:
         if eth_spot:
             lines.append("### ETH")
             lines.append("")
-            lines.append("| Metric | Value |")
-            lines.append("|--------|-------|")
-            lines.append(f"| Price | ${eth_spot.get('price', 0):,.2f} |")
-            lines.append(f"| 24h Change | {eth_spot.get('change_24h', 0):+.2f}% |")
-            lines.append(f"| 24h Volume | ${eth_spot.get('volume_24h', 0):,.0f} |")
-            lines.append(f"| Market Cap | ${eth_spot.get('market_cap', 0):,.0f} |")
-            lines.append(f"| 24h High | ${eth_spot.get('high_24h', 0):,.2f} |")
-            lines.append(f"| 24h Low | ${eth_spot.get('low_24h', 0):,.2f} |")
+            lines.append("| 지표 | 값 |")
+            lines.append("|------|-----|")
+            lines.append(f"| 가격 | ${eth_spot.get('price', 0):,.2f} |")
+            lines.append(f"| 24시간 변동 | {eth_spot.get('change_24h', 0):+.2f}% |")
+            lines.append(f"| 24시간 거래량 | ${eth_spot.get('volume_24h', 0):,.0f} |")
+            lines.append(f"| 시가총액 | ${eth_spot.get('market_cap', 0):,.0f} |")
+            lines.append(f"| 24시간 고가 | ${eth_spot.get('high_24h', 0):,.2f} |")
+            lines.append(f"| 24시간 저가 | ${eth_spot.get('low_24h', 0):,.2f} |")
 
             if eth_deriv:
                 lines.append(
-                    f"| Funding Rate (8h) | {eth_deriv.get('funding_rate', 0) * 100:.4f}% |"
+                    f"| 펀딩 레이트 (8h) | {eth_deriv.get('funding_rate', 0) * 100:.4f}% |"
                 )
                 lines.append(
-                    f"| Funding Rate (24h) | {eth_deriv.get('funding_rate_24h', 0) * 100:.4f}% |"
+                    f"| 펀딩 레이트 (24h) | {eth_deriv.get('funding_rate_24h', 0) * 100:.4f}% |"
                 )
-                lines.append(f"| Open Interest | ${eth_deriv.get('open_interest_usd', 0):,.0f} |")
-                lines.append(f"| Long/Short Ratio | {eth_deriv.get('long_short_ratio', 0):.3f} |")
+                lines.append(f"| 미결제약정 | ${eth_deriv.get('open_interest_usd', 0):,.0f} |")
+                lines.append(f"| 롱/숏 비율 | {eth_deriv.get('long_short_ratio', 0):.3f} |")
                 lines.append(
-                    f"| Long Liquidation (24h) | ${eth_deriv.get('long_liquidation_24h', 0):,.0f} |"
+                    f"| 롱 청산 (24h) | ${eth_deriv.get('long_liquidation_24h', 0):,.0f} |"
                 )
                 lines.append(
-                    f"| Short Liquidation (24h) | ${eth_deriv.get('short_liquidation_24h', 0):,.0f} |"
+                    f"| 숏 청산 (24h) | ${eth_deriv.get('short_liquidation_24h', 0):,.0f} |"
                 )
 
         return "\n".join(lines)
@@ -262,7 +261,7 @@ class ReportWriter:
     def _generate_news_section(self, news_snapshot: list[dict[str, Any]]) -> str:
         """Generate news section (max 5 items)."""
         if not news_snapshot:
-            return "No significant news or events at this time."
+            return "현재 시점에서 중요한 뉴스나 이벤트가 없습니다."
 
         lines = []
         for news in news_snapshot[:5]:  # Max 5 items
@@ -289,11 +288,11 @@ class ReportWriter:
                     date_str = published_at
 
             lines.append(f"**{sentiment_emoji} {title}**")
-            lines.append(f"- Source: {source}")
+            lines.append(f"- 출처: {source}")
             if date_str:
-                lines.append(f"- Published: {date_str}")
+                lines.append(f"- 발행일: {date_str}")
             if url:
-                lines.append(f"- [Read more]({url})")
+                lines.append(f"- [자세히 보기]({url})")
             lines.append("")
 
         return "\n".join(lines)
@@ -320,52 +319,52 @@ class ReportWriter:
         lines = []
 
         # Upside Scenario
-        lines.append("### 📈 Upside Scenario")
+        lines.append("### 📈 상승 시나리오")
         triggers = []
         if btc_change > 0 and eth_change > 0:
-            triggers.append("Sustained positive momentum in both BTC and ETH")
+            triggers.append("BTC와 ETH 모두 지속적인 상승 모멘텀")
         if btc_deriv.get("funding_rate", 0) < 0.001:
-            triggers.append("Funding rate remains low (no long squeeze risk)")
+            triggers.append("펀딩 레이트가 낮게 유지 (롱 스퀴즈 리스크 없음)")
         if btc_deriv.get("long_short_ratio", 1.0) < 1.2:
-            triggers.append("Long/short ratio not overly extended")
+            triggers.append("롱/숏 비율이 과도하게 확대되지 않음")
         if warn_count == 0 and critical_count == 0:
-            triggers.append("No critical warning signals present")
+            triggers.append("중요한 경고 시그널 없음")
         if not triggers:
-            triggers.append("Break above key resistance levels with volume confirmation")
+            triggers.append("거래량 확인과 함께 주요 저항선 돌파")
 
         for trigger in triggers[:3]:  # Max 3 triggers
             lines.append(f"- {trigger}")
         lines.append("")
 
         # Sideways Scenario
-        lines.append("### ➡️ Sideways Scenario")
+        lines.append("### ➡️ 횡보 시나리오")
         triggers = []
         if abs(btc_change) < 3 and abs(eth_change) < 3:
-            triggers.append("Low volatility and range-bound price action")
+            triggers.append("낮은 변동성과 범위 내 가격 움직임")
         if btc_deriv.get("funding_rate", 0) > -0.001 and btc_deriv.get("funding_rate", 0) < 0.001:
-            triggers.append("Funding rate near neutral (equilibrium)")
+            triggers.append("펀딩 레이트가 중립 수준 근처 (균형 상태)")
         if warn_count > 0 and critical_count == 0:
-            triggers.append("Some warning signals but no critical issues")
+            triggers.append("일부 경고 시그널 있으나 중요한 문제 없음")
         if not triggers:
-            triggers.append("Price consolidates between support and resistance levels")
+            triggers.append("지지선과 저항선 사이에서 가격 정체")
 
         for trigger in triggers[:3]:
             lines.append(f"- {trigger}")
         lines.append("")
 
         # Downside Scenario
-        lines.append("### 📉 Downside Scenario")
+        lines.append("### 📉 하락 시나리오")
         triggers = []
         if critical_count >= 1:
-            triggers.append("Critical signals detected (e.g., extreme funding, liquidation risk)")
+            triggers.append("중요 시그널 감지 (예: 극단적 펀딩 레이트, 청산 리스크)")
         if btc_change < -5 or eth_change < -5:
-            triggers.append("Sharp price decline with increased selling pressure")
+            triggers.append("급격한 가격 하락과 매도 압력 증가")
         if btc_deriv.get("funding_rate", 0) > 0.01:
-            triggers.append("High funding rate indicates long squeeze risk")
+            triggers.append("높은 펀딩 레이트는 롱 스퀴즈 리스크를 시사")
         if btc_deriv.get("long_short_ratio", 1.0) > 1.5:
-            triggers.append("Extreme long/short ratio suggests over-leveraged longs")
+            triggers.append("극단적인 롱/숏 비율은 과도한 레버리지 롱 포지션을 시사")
         if not triggers:
-            triggers.append("Break below key support levels with volume confirmation")
+            triggers.append("거래량 확인과 함께 주요 지지선 이탈")
 
         for trigger in triggers[:3]:
             lines.append(f"- {trigger}")

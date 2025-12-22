@@ -162,23 +162,40 @@ class TelegramNotifier:
         # Links (basic)
         text = re.sub(r"\[(.+?)\]\((.+?)\)", r'<a href="\2">\1</a>', text)
 
-        # Tables (convert to simple format)
+        # Tables (convert to HTML table format for Telegram)
         lines = text.split("\n")
         result_lines = []
         in_table = False
+        table_rows = []
 
         for line in lines:
-            if "|" in line and not line.strip().startswith("|"):
+            # Check if this is a table row (contains | and not a separator line)
+            if "|" in line and not re.match(r"^\s*\|?[\s\-:]+\|", line):
                 # Table row
                 if not in_table:
                     in_table = True
+                    result_lines.append("<table>")
+                
                 cells = [cell.strip() for cell in line.split("|") if cell.strip()]
                 if cells:
-                    result_lines.append(" | ".join(cells))
+                    # First row is header
+                    if len(table_rows) == 0:
+                        table_rows.append("<tr>" + "".join([f"<th>{cell}</th>" for cell in cells]) + "</tr>")
+                    else:
+                        table_rows.append("<tr>" + "".join([f"<td>{cell}</td>" for cell in cells]) + "</tr>")
             else:
+                # End of table
                 if in_table:
                     in_table = False
+                    result_lines.extend(table_rows)
+                    result_lines.append("</table>")
+                    table_rows = []
                 result_lines.append(line)
+
+        # Close table if still open
+        if in_table:
+            result_lines.extend(table_rows)
+            result_lines.append("</table>")
 
         return "\n".join(result_lines)
 

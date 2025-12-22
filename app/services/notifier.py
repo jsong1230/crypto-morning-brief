@@ -310,9 +310,26 @@ class TelegramNotifier:
         try:
             logger.info(f"Sending Telegram message to chat_id={self.chat_id}, length={len(text)}")
             response = requests.post(url, json=payload, timeout=10)
-            response.raise_for_status()
-            result = response.json()
-
+            
+            # Get response body before raising error
+            try:
+                result = response.json()
+            except Exception:
+                result = {"error": "Failed to parse JSON response", "text": response.text[:500]}
+            
+            # Check status and log detailed error if failed
+            if not response.ok:
+                error_desc = result.get("description", result.get("error", "Unknown error"))
+                error_code = result.get("error_code", response.status_code)
+                logger.error(
+                    f"❌ Telegram API error [{error_code}]: {error_desc}\n"
+                    f"Response: {result}\n"
+                    f"Request payload preview: text_length={len(text)}, parse_mode={self.parse_mode}"
+                )
+                # Log first 200 chars of text for debugging
+                logger.debug(f"Message preview: {text[:200]}...")
+                response.raise_for_status()
+            
             if result.get("ok"):
                 logger.info("✅ Telegram message sent successfully")
                 return True
@@ -325,6 +342,19 @@ class TelegramNotifier:
                 )
                 return False
 
+        except requests.exceptions.HTTPError as e:
+            # Try to get error details from response
+            try:
+                error_body = e.response.json() if e.response else {}
+                error_desc = error_body.get("description", str(e))
+                logger.error(
+                    f"❌ HTTP error sending Telegram message: {error_desc}\n"
+                    f"Status: {e.response.status_code if e.response else 'N/A'}\n"
+                    f"Response: {error_body}"
+                )
+            except Exception:
+                logger.error(f"❌ HTTP error sending Telegram message: {str(e)}")
+            return False
         except requests.exceptions.RequestException as e:
             logger.error(f"❌ Failed to send Telegram message: {str(e)}", exc_info=True)
             return False

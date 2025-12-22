@@ -50,8 +50,9 @@ def test_send_success(mock_post, mock_notifier):
     mock_response.json.return_value = {"ok": True}
     mock_response.raise_for_status = lambda: None
 
-    # Should not raise
-    mock_notifier.send("Test message")
+    # Should return True on success
+    result = mock_notifier.send("Test message")
+    assert result is True
 
     assert mock_post.called
     call_args = mock_post.call_args
@@ -67,8 +68,9 @@ def test_send_failure(mock_post, mock_notifier):
 
     mock_post.side_effect = requests.exceptions.RequestException("Connection error")
 
-    # Should not raise, just log warning
-    mock_notifier.send("Test message")
+    # Should return False on failure
+    result = mock_notifier.send("Test message")
+    assert result is False
 
 
 @patch("app.services.notifier.requests.post")
@@ -81,7 +83,8 @@ def test_split_and_send(mock_post, mock_notifier):
     # Create a message longer than 4096 characters
     long_message = "A" * 5000
 
-    mock_notifier.split_and_send(long_message)
+    result = mock_notifier.split_and_send(long_message)
+    assert result is True
 
     # Should have called post multiple times
     assert mock_post.call_count > 1

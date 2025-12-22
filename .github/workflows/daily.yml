@@ -50,7 +50,14 @@ jobs:
           echo "✅ Telegram secrets are set"
           echo "Bot token: ${TELEGRAM_BOT_TOKEN:0:20}..."
           echo "Chat ID: $TELEGRAM_CHAT_ID"
+          echo ""
+          echo "Generating and sending report..."
           python scripts/run_daily_report.py
+          if [ $? -ne 0 ]; then
+            echo "❌ Report generation or Telegram sending failed!"
+            exit 1
+          fi
+          echo "✅ Report generated and sent successfully"
 
       - name: Upload report artifact
         if: always()

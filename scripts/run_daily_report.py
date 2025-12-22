@@ -97,25 +97,34 @@ async def generate_daily_report(
     logger.info(f"Telegram settings: SEND_TELEGRAM={settings.send_telegram}")
     logger.info(f"Telegram configured: {telegram_notifier.is_configured()}")
     
+    telegram_sent = False
     if settings.send_telegram:
         if telegram_notifier.is_configured():
-            logger.info("Sending report to Telegram...")
+            logger.info("📤 Sending report to Telegram...")
             logger.info(f"Bot token: {telegram_notifier.bot_token[:20]}...")
             logger.info(f"Chat ID: {telegram_notifier.chat_id}")
             try:
-                telegram_notifier.send(markdown)
-                logger.info("Report sent to Telegram successfully")
+                telegram_sent = telegram_notifier.send(markdown)
+                if telegram_sent:
+                    logger.info("✅ Report sent to Telegram successfully")
+                else:
+                    logger.error("❌ Failed to send report to Telegram (check logs above for details)")
             except Exception as e:
-                logger.error(f"Error sending Telegram notification: {str(e)}", exc_info=True)
+                logger.error(f"❌ Error sending Telegram notification: {str(e)}", exc_info=True)
         else:
             logger.error(
-                f"Telegram notifier is not configured. "
+                f"❌ Telegram notifier is not configured. "
                 f"bot_token={'set' if telegram_notifier.bot_token else 'missing'}, "
                 f"chat_id={'set' if telegram_notifier.chat_id else 'missing'}, "
                 f"enabled={telegram_notifier.enabled}"
             )
     else:
         logger.info("Telegram notifier is disabled (SEND_TELEGRAM=false)")
+    
+    # Exit with error code if Telegram was supposed to send but failed
+    if settings.send_telegram and not telegram_sent:
+        logger.error("❌ Telegram sending failed - exiting with error code")
+        sys.exit(1)
 
     return markdown
 

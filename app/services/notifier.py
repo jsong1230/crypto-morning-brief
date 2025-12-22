@@ -33,24 +33,27 @@ class TelegramNotifier:
         """
         return bool(self.bot_token and self.chat_id and self.enabled)
 
-    def send(self, text: str) -> None:
+    def send(self, text: str) -> bool:
         """
         Send a message to Telegram.
 
         Args:
             text: Message text to send.
 
+        Returns:
+            True if message was sent successfully, False otherwise.
+
         Note:
-            Errors are logged as warnings and do not raise exceptions.
+            Errors are logged but do not raise exceptions.
         """
         if not self.is_configured():
             logger.error(
-                f"Telegram notifier is not configured or disabled. "
+                f"❌ Telegram notifier is not configured or disabled. "
                 f"bot_token={'set' if self.bot_token else 'missing'}, "
                 f"chat_id={'set' if self.chat_id else 'missing'}, "
                 f"enabled={self.enabled}"
             )
-            return
+            return False
 
         # Convert markdown to HTML if needed
         formatted_text = self._format_text(text)
@@ -59,29 +62,32 @@ class TelegramNotifier:
         # Check length and split if needed
         if len(formatted_text) > MAX_MESSAGE_LENGTH:
             logger.info(f"Message exceeds {MAX_MESSAGE_LENGTH} chars, splitting...")
-            self.split_and_send(text)
-            return
+            return self.split_and_send(text)
 
         # Send message
-        self._send_message(formatted_text)
+        return self._send_message(formatted_text)
 
-    def split_and_send(self, text: str) -> None:
+    def split_and_send(self, text: str) -> bool:
         """
         Split long message and send in multiple parts.
 
         Args:
             text: Long message text to split and send.
 
+        Returns:
+            True if at least one message was sent successfully, False otherwise.
+
         Note:
-            Errors are logged as warnings and do not raise exceptions.
+            Errors are logged but do not raise exceptions.
         """
         if not self.is_configured():
-            logger.warning("Telegram notifier is not configured or disabled")
-            return
+            logger.error("❌ Telegram notifier is not configured or disabled")
+            return False
 
         # Split by paragraphs first (double newlines)
         paragraphs = text.split("\n\n")
         current_chunk = []
+        success_count = 0
 
         for para in paragraphs:
             # Convert paragraph to HTML
@@ -94,21 +100,26 @@ class TelegramNotifier:
                 # Send current chunk if exists
                 if current_chunk:
                     chunk_text = "\n\n".join(current_chunk)
-                    self._send_message(chunk_text)
+                    if self._send_message(chunk_text):
+                        success_count += 1
                     current_chunk = []
 
                 # If single paragraph is too long, force split
                 if len(formatted_para) > MAX_MESSAGE_LENGTH:
                     chunks = self._force_split(formatted_para, MAX_MESSAGE_LENGTH)
                     for chunk in chunks:
-                        self._send_message(chunk)
+                        if self._send_message(chunk):
+                            success_count += 1
                 else:
                     current_chunk.append(formatted_para)
 
         # Send remaining chunk
         if current_chunk:
             chunk_text = "\n\n".join(current_chunk)
-            self._send_message(chunk_text)
+            if self._send_message(chunk_text):
+                success_count += 1
+
+        return success_count > 0
 
     def _format_text(self, text: str) -> str:
         """
@@ -274,15 +285,18 @@ class TelegramNotifier:
 
         return chunks
 
-    def _send_message(self, text: str) -> None:
+    def _send_message(self, text: str) -> bool:
         """
         Send a single message to Telegram API.
 
         Args:
             text: Message text to send.
 
+        Returns:
+            True if message was sent successfully, False otherwise.
+
         Note:
-            Errors are logged as warnings and do not raise exceptions.
+            Errors are logged but do not raise exceptions.
         """
         url = TELEGRAM_API_URL.format(token=self.bot_token)
 
@@ -300,19 +314,23 @@ class TelegramNotifier:
             result = response.json()
 
             if result.get("ok"):
-                logger.info("Telegram message sent successfully")
+                logger.info("✅ Telegram message sent successfully")
+                return True
             else:
                 error_desc = result.get("description", "Unknown error")
                 error_code = result.get("error_code", "N/A")
                 logger.error(
-                    f"Telegram API returned error: [{error_code}] {error_desc}. "
+                    f"❌ Telegram API returned error: [{error_code}] {error_desc}. "
                     f"Response: {result}"
                 )
+                return False
 
         except requests.exceptions.RequestException as e:
-            logger.error(f"Failed to send Telegram message: {str(e)}", exc_info=True)
+            logger.error(f"❌ Failed to send Telegram message: {str(e)}", exc_info=True)
+            return False
         except Exception as e:
-            logger.error(f"Unexpected error sending Telegram message: {str(e)}", exc_info=True)
+            logger.error(f"❌ Unexpected error sending Telegram message: {str(e)}", exc_info=True)
+            return False
 
 
 # Global instance

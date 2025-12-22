@@ -178,5 +178,5 @@ def test_report_writer_market_summary(report_writer, sample_spot_snapshot):
 
     assert "BTC" in summary
     assert "ETH" in summary
-    assert "$" in summary  # Price formatting
+    assert "₩" in summary or "원" in summary  # KRW price formatting
     assert "%" in summary  # Change formatting

@@ -3,6 +3,8 @@
 from datetime import datetime
 from typing import Any
 
+from app.config import settings
+
 
 class ReportWriter:
     """Generate markdown reports from market data and signals."""
@@ -112,9 +114,13 @@ class ReportWriter:
         btc_emoji = "📈" if btc_change >= 0 else "📉"
         eth_emoji = "📈" if eth_change >= 0 else "📉"
 
+        # Convert to KRW
+        btc_price_krw = btc_price * settings.usd_to_krw
+        eth_price_krw = eth_price * settings.usd_to_krw
+
         summary = (
-            f"**BTC** {btc_emoji} ${btc_price:,.0f} ({btc_change:+.2f}%) | "
-            f"**ETH** {eth_emoji} ${eth_price:,.0f} ({eth_change:+.2f}%)"
+            f"**BTC** {btc_emoji} ₩{btc_price_krw:,.0f} ({btc_change:+.2f}%) | "
+            f"**ETH** {eth_emoji} ₩{eth_price_krw:,.0f} ({eth_change:+.2f}%)"
         )
 
         # Add market sentiment
@@ -197,14 +203,23 @@ class ReportWriter:
         if btc_spot:
             lines.append("### BTC")
             lines.append("")
+            # Convert USD to KRW
+            usd_to_krw = settings.usd_to_krw
+            btc_price_usd = btc_spot.get("price", 0)
+            btc_price_krw = btc_price_usd * usd_to_krw
+            btc_volume_krw = btc_spot.get("volume_24h", 0) * usd_to_krw
+            btc_market_cap_krw = btc_spot.get("market_cap", 0) * usd_to_krw
+            btc_high_krw = btc_spot.get("high_24h", 0) * usd_to_krw
+            btc_low_krw = btc_spot.get("low_24h", 0) * usd_to_krw
+
             lines.append("| 지표 | 값 |")
             lines.append("|------|-----|")
-            lines.append(f"| 가격 | ${btc_spot.get('price', 0):,.2f} |")
+            lines.append(f"| 가격 | ₩{btc_price_krw:,.0f} |")
             lines.append(f"| 24시간 변동 | {btc_spot.get('change_24h', 0):+.2f}% |")
-            lines.append(f"| 24시간 거래량 | ${btc_spot.get('volume_24h', 0):,.0f} |")
-            lines.append(f"| 시가총액 | ${btc_spot.get('market_cap', 0):,.0f} |")
-            lines.append(f"| 24시간 고가 | ${btc_spot.get('high_24h', 0):,.2f} |")
-            lines.append(f"| 24시간 저가 | ${btc_spot.get('low_24h', 0):,.2f} |")
+            lines.append(f"| 24시간 거래량 | ₩{btc_volume_krw:,.0f} |")
+            lines.append(f"| 시가총액 | ₩{btc_market_cap_krw:,.0f} |")
+            lines.append(f"| 24시간 고가 | ₩{btc_high_krw:,.0f} |")
+            lines.append(f"| 24시간 저가 | ₩{btc_low_krw:,.0f} |")
 
             if btc_deriv:
                 lines.append(
@@ -213,14 +228,13 @@ class ReportWriter:
                 lines.append(
                     f"| 펀딩 레이트 (24h) | {btc_deriv.get('funding_rate_24h', 0) * 100:.4f}% |"
                 )
-                lines.append(f"| 미결제약정 | ${btc_deriv.get('open_interest_usd', 0):,.0f} |")
+                oi_krw = btc_deriv.get("open_interest_usd", 0) * usd_to_krw
+                lines.append(f"| 미결제약정 | ₩{oi_krw:,.0f} |")
                 lines.append(f"| 롱/숏 비율 | {btc_deriv.get('long_short_ratio', 0):.3f} |")
-                lines.append(
-                    f"| 롱 청산 (24h) | ${btc_deriv.get('long_liquidation_24h', 0):,.0f} |"
-                )
-                lines.append(
-                    f"| 숏 청산 (24h) | ${btc_deriv.get('short_liquidation_24h', 0):,.0f} |"
-                )
+                long_liq_krw = btc_deriv.get("long_liquidation_24h", 0) * usd_to_krw
+                short_liq_krw = btc_deriv.get("short_liquidation_24h", 0) * usd_to_krw
+                lines.append(f"| 롱 청산 (24h) | ₩{long_liq_krw:,.0f} |")
+                lines.append(f"| 숏 청산 (24h) | ₩{short_liq_krw:,.0f} |")
 
             lines.append("")
 
@@ -231,14 +245,23 @@ class ReportWriter:
         if eth_spot:
             lines.append("### ETH")
             lines.append("")
+            # Convert USD to KRW
+            usd_to_krw = settings.usd_to_krw
+            eth_price_usd = eth_spot.get("price", 0)
+            eth_price_krw = eth_price_usd * usd_to_krw
+            eth_volume_krw = eth_spot.get("volume_24h", 0) * usd_to_krw
+            eth_market_cap_krw = eth_spot.get("market_cap", 0) * usd_to_krw
+            eth_high_krw = eth_spot.get("high_24h", 0) * usd_to_krw
+            eth_low_krw = eth_spot.get("low_24h", 0) * usd_to_krw
+
             lines.append("| 지표 | 값 |")
             lines.append("|------|-----|")
-            lines.append(f"| 가격 | ${eth_spot.get('price', 0):,.2f} |")
+            lines.append(f"| 가격 | ₩{eth_price_krw:,.0f} |")
             lines.append(f"| 24시간 변동 | {eth_spot.get('change_24h', 0):+.2f}% |")
-            lines.append(f"| 24시간 거래량 | ${eth_spot.get('volume_24h', 0):,.0f} |")
-            lines.append(f"| 시가총액 | ${eth_spot.get('market_cap', 0):,.0f} |")
-            lines.append(f"| 24시간 고가 | ${eth_spot.get('high_24h', 0):,.2f} |")
-            lines.append(f"| 24시간 저가 | ${eth_spot.get('low_24h', 0):,.2f} |")
+            lines.append(f"| 24시간 거래량 | ₩{eth_volume_krw:,.0f} |")
+            lines.append(f"| 시가총액 | ₩{eth_market_cap_krw:,.0f} |")
+            lines.append(f"| 24시간 고가 | ₩{eth_high_krw:,.0f} |")
+            lines.append(f"| 24시간 저가 | ₩{eth_low_krw:,.0f} |")
 
             if eth_deriv:
                 lines.append(
@@ -247,14 +270,13 @@ class ReportWriter:
                 lines.append(
                     f"| 펀딩 레이트 (24h) | {eth_deriv.get('funding_rate_24h', 0) * 100:.4f}% |"
                 )
-                lines.append(f"| 미결제약정 | ${eth_deriv.get('open_interest_usd', 0):,.0f} |")
+                oi_krw = eth_deriv.get("open_interest_usd", 0) * usd_to_krw
+                lines.append(f"| 미결제약정 | ₩{oi_krw:,.0f} |")
                 lines.append(f"| 롱/숏 비율 | {eth_deriv.get('long_short_ratio', 0):.3f} |")
-                lines.append(
-                    f"| 롱 청산 (24h) | ${eth_deriv.get('long_liquidation_24h', 0):,.0f} |"
-                )
-                lines.append(
-                    f"| 숏 청산 (24h) | ${eth_deriv.get('short_liquidation_24h', 0):,.0f} |"
-                )
+                long_liq_krw = eth_deriv.get("long_liquidation_24h", 0) * usd_to_krw
+                short_liq_krw = eth_deriv.get("short_liquidation_24h", 0) * usd_to_krw
+                lines.append(f"| 롱 청산 (24h) | ₩{long_liq_krw:,.0f} |")
+                lines.append(f"| 숏 청산 (24h) | ₩{short_liq_krw:,.0f} |")
 
         return "\n".join(lines)
 

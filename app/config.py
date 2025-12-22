@@ -30,6 +30,9 @@ class Settings(BaseSettings):
     telegram_parse_mode: str = "HTML"  # HTML or MarkdownV2
     telegram_wrap_pre: bool = False  # Wrap markdown in <pre> tags
 
+    # Currency settings
+    usd_to_krw: float = 1300.0  # USD to KRW exchange rate (default approximate)
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

@@ -274,12 +274,12 @@ class TelegramNotifier:
                         col_widths[i] = max(col_widths[i], len(cell))
             
             if table_rows:
-                # Format header (first row) with bold
+                # Format header (first row) with bold markers (will be converted to <b> later)
                 header = table_rows[0]
                 header_parts = []
                 for i, cell in enumerate(header):
                     width = col_widths[i] if i < len(col_widths) else len(cell)
-                    header_parts.append(f"<b>{cell.ljust(width)}</b>")
+                    header_parts.append(f"**{cell.ljust(width)}**")
                 result_lines.append(" | ".join(header_parts))
                 
                 # Add separator line
@@ -289,7 +289,7 @@ class TelegramNotifier:
                     separator_parts.append("-" * width)
                 result_lines.append(" | ".join(separator_parts))
                 
-                # Format data rows
+                # Format data rows (not bold)
                 for row in table_rows[1:]:
                     row_parts = []
                     for i, cell in enumerate(row):

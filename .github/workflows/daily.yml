@@ -35,7 +35,7 @@ jobs:
           TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
           TELEGRAM_PARSE_MODE: "HTML"
           TELEGRAM_WRAP_PRE: "false"
-          PROVIDER: "mock"
+          PROVIDER: "public"
           LOG_LEVEL: "INFO"
         run: |
           echo "Checking Telegram configuration..."

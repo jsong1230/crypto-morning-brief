@@ -230,29 +230,28 @@ class TelegramNotifier:
                                 if i < num_cols:
                                     col_widths[i] = max(col_widths[i], len(cell))
                         
-                        # Format header (first row) with bold
-                        if table_rows:
-                            header = table_rows[0]
-                            header_parts = []
-                            for i, cell in enumerate(header):
+                        # Format header (first row) with bold markers (will be converted to <b> later)
+                        header = table_rows[0]
+                        header_parts = []
+                        for i, cell in enumerate(header):
+                            width = col_widths[i] if i < len(col_widths) else len(cell)
+                            header_parts.append(f"**{cell.ljust(width)}**")
+                        result_lines.append(" | ".join(header_parts))
+                        
+                        # Add separator line
+                        separator_parts = []
+                        for i in range(num_cols):
+                            width = col_widths[i] if i < len(col_widths) else 10
+                            separator_parts.append("-" * width)
+                        result_lines.append(" | ".join(separator_parts))
+                        
+                        # Format data rows
+                        for row in table_rows[1:]:
+                            row_parts = []
+                            for i, cell in enumerate(row):
                                 width = col_widths[i] if i < len(col_widths) else len(cell)
-                                header_parts.append(f"<b>{cell.ljust(width)}</b>")
-                            result_lines.append(" | ".join(header_parts))
-                            
-                            # Add separator line
-                            separator_parts = []
-                            for i in range(num_cols):
-                                width = col_widths[i] if i < len(col_widths) else 10
-                                separator_parts.append("-" * width)
-                            result_lines.append(" | ".join(separator_parts))
-                            
-                            # Format data rows
-                            for row in table_rows[1:]:
-                                row_parts = []
-                                for i, cell in enumerate(row):
-                                    width = col_widths[i] if i < len(col_widths) else len(cell)
-                                    row_parts.append(cell.ljust(width))
-                                result_lines.append(" | ".join(row_parts))
+                                row_parts.append(cell.ljust(width))
+                            result_lines.append(" | ".join(row_parts))
                     
                     table_rows = []
                     in_table = False

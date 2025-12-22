@@ -167,8 +167,8 @@ def test_report_writer_with_empty_data(report_writer):
         news_snapshot=[],
     )
 
-    assert isinstance(report, str)
-    assert "Crypto Morning Brief" in report
+        assert isinstance(report, str)
+        assert "암호화폐 모닝 브리프" in report
     assert "Disclaimer" in report
 
 

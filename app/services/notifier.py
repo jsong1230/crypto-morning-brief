@@ -167,30 +167,39 @@ class TelegramNotifier:
         result_lines = []
         in_table = False
         table_rows = []
+        is_first_row = True
 
         for line in lines:
+            # Check if this is a separator line (contains only dashes, colons, spaces, and pipes)
+            is_separator = bool(re.match(r"^\s*\|?[\s\-:]+\|", line))
+            
             # Check if this is a table row (contains | and not a separator line)
-            if "|" in line and not re.match(r"^\s*\|?[\s\-:]+\|", line):
+            if "|" in line and not is_separator:
                 # Table row
                 if not in_table:
                     in_table = True
                     result_lines.append("<table>")
+                    is_first_row = True
                 
                 cells = [cell.strip() for cell in line.split("|") if cell.strip()]
                 if cells:
                     # First row is header
-                    if len(table_rows) == 0:
+                    if is_first_row:
                         table_rows.append("<tr>" + "".join([f"<th>{cell}</th>" for cell in cells]) + "</tr>")
+                        is_first_row = False
                     else:
                         table_rows.append("<tr>" + "".join([f"<td>{cell}</td>" for cell in cells]) + "</tr>")
             else:
-                # End of table
+                # End of table (separator or non-table line)
                 if in_table:
                     in_table = False
                     result_lines.extend(table_rows)
                     result_lines.append("</table>")
                     table_rows = []
-                result_lines.append(line)
+                    is_first_row = True
+                # Skip separator lines, add other lines
+                if not is_separator:
+                    result_lines.append(line)
 
         # Close table if still open
         if in_table:

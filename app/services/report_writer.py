@@ -4,6 +4,7 @@ from datetime import datetime
 from typing import Any
 
 from app.config import settings
+from app.utils.exchange_rate import get_usd_to_krw
 
 
 class ReportWriter:
@@ -114,9 +115,12 @@ class ReportWriter:
         btc_emoji = "📈" if btc_change >= 0 else "📉"
         eth_emoji = "📈" if eth_change >= 0 else "📉"
 
+        # Get current USD to KRW exchange rate
+        usd_to_krw = get_usd_to_krw()
+
         # Convert to KRW
-        btc_price_krw = btc_price * settings.usd_to_krw
-        eth_price_krw = eth_price * settings.usd_to_krw
+        btc_price_krw = btc_price * usd_to_krw
+        eth_price_krw = eth_price * usd_to_krw
 
         summary = (
             f"**BTC** {btc_emoji} ₩{btc_price_krw:,.0f} ({btc_change:+.2f}%) | "
@@ -203,8 +207,10 @@ class ReportWriter:
         if btc_spot:
             lines.append("### BTC")
             lines.append("")
+            # Get current USD to KRW exchange rate
+            usd_to_krw = get_usd_to_krw()
+
             # Convert USD to KRW
-            usd_to_krw = settings.usd_to_krw
             btc_price_usd = btc_spot.get("price", 0)
             btc_price_krw = btc_price_usd * usd_to_krw
             btc_volume_krw = btc_spot.get("volume_24h", 0) * usd_to_krw
@@ -245,8 +251,10 @@ class ReportWriter:
         if eth_spot:
             lines.append("### ETH")
             lines.append("")
+            # Get current USD to KRW exchange rate
+            usd_to_krw = get_usd_to_krw()
+
             # Convert USD to KRW
-            usd_to_krw = settings.usd_to_krw
             eth_price_usd = eth_spot.get("price", 0)
             eth_price_krw = eth_price_usd * usd_to_krw
             eth_volume_krw = eth_spot.get("volume_24h", 0) * usd_to_krw

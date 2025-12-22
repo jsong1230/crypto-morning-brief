@@ -153,27 +153,51 @@ class TelegramNotifier:
         Returns:
             HTML formatted text.
         """
-        # Escape HTML first
-        text = html.escape(text)
+        # Process tables first (before HTML escaping)
+        text = self._convert_tables_to_text(text)
 
-        # Headers
+        # Headers (before escaping)
         text = re.sub(r"^# (.+)$", r"<b>\1</b>", text, flags=re.MULTILINE)
         text = re.sub(r"^## (.+)$", r"<b>\1</b>", text, flags=re.MULTILINE)
         text = re.sub(r"^### (.+)$", r"<b>\1</b>", text, flags=re.MULTILINE)
 
-        # Bold
+        # Bold (before escaping)
         text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
 
-        # Italic
-        text = re.sub(r"\*(.+?)\*", r"<i>\1</i>", text)
+        # Italic (avoid matching bold markers)
+        text = re.sub(r"(?<!\*)\*([^*]+?)\*(?!\*)", r"<i>\1</i>", text)
 
-        # Code
+        # Code (before escaping)
         text = re.sub(r"`(.+?)`", r"<code>\1</code>", text)
 
-        # Links (basic)
+        # Links (before escaping)
         text = re.sub(r"\[(.+?)\]\((.+?)\)", r'<a href="\2">\1</a>', text)
 
-        # Tables (Telegram HTML doesn't support <table> tags, convert to formatted text)
+        # Now escape HTML for remaining text (but preserve our HTML tags)
+        # Split by HTML tags to preserve them
+        parts = re.split(r"(<[^>]+>)", text)
+        escaped_parts = []
+        for part in parts:
+            if part.startswith("<") and part.endswith(">"):
+                # This is an HTML tag, don't escape
+                escaped_parts.append(part)
+            else:
+                # This is text, escape it
+                escaped_parts.append(html.escape(part))
+        text = "".join(escaped_parts)
+
+        return text
+
+    def _convert_tables_to_text(self, text: str) -> str:
+        """
+        Convert markdown tables to formatted text (Telegram HTML doesn't support <table> tags).
+
+        Args:
+            text: Markdown text with tables.
+
+        Returns:
+            Text with tables converted to formatted text.
+        """
         # Telegram HTML parse mode only supports: <b>, <i>, <u>, <s>, <a>, <code>, <pre>
         lines = text.split("\n")
         result_lines = []

@@ -140,16 +140,16 @@ def test_report_writer_generate_report(
     assert len(report) > 0
 
     # Check title
-    assert f"Crypto Morning Brief — {date} (KST)" in report
+    assert f"암호화폐 모닝 브리프 — {date} (KST)" in report
 
     # Check sections
-    assert "## 📊 Market Summary" in report
-    assert "## 🎯 Market Regime" in report
-    assert "## ⚠️ Key Signals" in report
-    assert "## 📈 Key Metrics" in report
-    assert "## 📰 News & Events" in report
-    assert "## 🔮 Market Scenarios" in report
-    assert "## ⚠️ Disclaimer" in report
+    assert "## 📊 시장 요약" in report
+    assert "## 🎯 시장 국면" in report
+    assert "## ⚠️ 주요 시그널" in report
+    assert "## 📈 주요 지표" in report
+    assert "## 📰 뉴스 & 이벤트" in report
+    assert "## 🔮 시장 시나리오" in report
+    assert "## ⚠️ 면책 조항" in report
 
     # Check content
     assert "BTC" in report
@@ -167,9 +167,9 @@ def test_report_writer_with_empty_data(report_writer):
         news_snapshot=[],
     )
 
-        assert isinstance(report, str)
-        assert "암호화폐 모닝 브리프" in report
-    assert "Disclaimer" in report
+    assert isinstance(report, str)
+    assert "암호화폐 모닝 브리프" in report
+    assert "면책 조항" in report
 
 
 def test_report_writer_market_summary(report_writer, sample_spot_snapshot):

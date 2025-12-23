@@ -122,3 +122,5 @@ def test_post_daily_report_response_structure():
     assert data["regime"]["label"] in ["risk_on", "neutral", "risk_off"]
     assert "rationale" in data["regime"]
 
+
+

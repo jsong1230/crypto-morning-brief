@@ -459,24 +459,32 @@ make lint
    - `app/providers/base.py`의 `MarketProvider` 인터페이스를 구현
    - `app/providers/factory.py`의 `get_market_provider()` 함수에 추가
 
-#### PublicProvider (CoinGecko API + RSS Feeds)
+#### PublicProvider (CoinGecko API + Binance Futures API + RSS Feeds)
 
-`PROVIDER=public`으로 설정하면 CoinGecko 공개 API와 RSS 피드를 사용하여 실제 시장 데이터와 뉴스를 가져옵니다.
+`PROVIDER=public`으로 설정하면 CoinGecko 공개 API, Binance Futures API, RSS 피드를 사용하여 **모든 실제 시장 데이터**를 가져옵니다.
 
 **특징:**
 - ✅ API 키 불필요 (무료 공개 API)
 - ✅ BTC/ETH 등 주요 암호화폐 실제 가격 제공 (CoinGecko API)
 - ✅ 24h 변화율, 거래량, 시가총액 등 실제 데이터
+- ✅ **실제 파생상품 데이터** (Binance Futures API)
+  - 펀딩 레이트 (8h, 24h 평균)
+  - 미결제약정 (Open Interest)
+  - 롱/숏 비율
+  - 청산 데이터 (24h)
 - ✅ 실제 암호화폐 뉴스 (CoinTelegraph, Decrypt, CoinDesk RSS 피드)
-- ⚠️ 파생상품은 아직 Mock으로 자동 fallback (향후 실제 API 추가 예정)
 - ⚠️ API 실패 시 자동으로 Mock으로 fallback
 
-**뉴스 소스:**
-- CoinTelegraph RSS
-- Decrypt RSS
-- CoinDesk RSS
+**데이터 소스:**
+- **Spot 가격**: CoinGecko API
+- **파생상품**: Binance Futures API
+- **뉴스**: CoinTelegraph RSS, Decrypt RSS, CoinDesk RSS
 
 뉴스는 키워드 필터링을 통해 관련 기사만 수집하며, 최대 10개의 최신 뉴스를 반환합니다.
+
+**시장 시나리오 및 시장 국면:**
+- 모든 시나리오 분석은 실제 데이터 기반으로 생성됩니다
+- Spot 가격, 파생상품 데이터, 시그널 모두 실제 데이터를 사용합니다
 
 **사용 예시:**
 ```bash

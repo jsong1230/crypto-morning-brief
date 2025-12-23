@@ -80,3 +80,5 @@ def test_api_news_snapshot():
     assert "count" in data
     assert isinstance(data["data"], list)
 
+
+

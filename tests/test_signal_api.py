@@ -45,3 +45,5 @@ def test_signal_analyze_endpoint_default():
     assert "signals" in data
     assert "regime" in data
 
+
+

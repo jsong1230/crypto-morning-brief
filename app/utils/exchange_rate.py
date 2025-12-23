@@ -52,3 +52,5 @@ def get_usd_to_krw() -> float:
     return 1300.0
 
 
+
+

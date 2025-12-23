@@ -37,6 +37,23 @@ SYMBOL_TO_COINGECKO_ID = {
     "AVAX": "avalanche-2",
 }
 
+# Binance Futures API endpoints (free, no API key required)
+BINANCE_FUTURES_API_BASE = "https://fapi.binance.com/fapi/v1"
+
+# Symbol mapping: our symbols -> Binance Futures symbols
+SYMBOL_TO_BINANCE_SYMBOL = {
+    "BTC": "BTCUSDT",
+    "ETH": "ETHUSDT",
+    "BNB": "BNBUSDT",
+    "SOL": "SOLUSDT",
+    "ADA": "ADAUSDT",
+    "XRP": "XRPUSDT",
+    "DOGE": "DOGEUSDT",
+    "DOT": "DOTUSDT",
+    "MATIC": "MATICUSDT",
+    "AVAX": "AVAXUSDT",
+}
+
 
 class PublicProvider(MarketProvider):
     """Provider using public APIs (CoinGecko) for real market data."""
@@ -128,16 +145,153 @@ class PublicProvider(MarketProvider):
 
     async def get_derivatives_snapshot(self, symbols: list[str]) -> dict[str, Any]:
         """
-        Get derivatives snapshot (fallback to mock).
+        Get derivatives snapshot from Binance Futures API.
 
         Args:
             symbols: List of cryptocurrency symbols.
 
         Returns:
-            Dictionary with derivatives data from mock provider.
+            Dictionary with derivatives data, or fallback to mock if API fails.
         """
-        logger.info("Derivatives data not available from public API, using mock fallback")
-        return await self._fallback_provider.get_derivatives_snapshot(symbols)
+        try:
+            result: dict[str, Any] = {}
+            
+            async with httpx.AsyncClient(timeout=self._http_timeout) as client:
+                for symbol in symbols:
+                    symbol_upper = symbol.upper()
+                    if symbol_upper not in SYMBOL_TO_BINANCE_SYMBOL:
+                        continue
+                    
+                    binance_symbol = SYMBOL_TO_BINANCE_SYMBOL[symbol_upper]
+                    
+                    try:
+                        # 1. Get current funding rate and mark price
+                        premium_response = await client.get(
+                            f"{BINANCE_FUTURES_API_BASE}/premiumIndex",
+                            params={"symbol": binance_symbol}
+                        )
+                        premium_response.raise_for_status()
+                        premium_data = premium_response.json()
+                        
+                        current_funding_rate = float(premium_data.get("lastFundingRate", 0))
+                        mark_price = float(premium_data.get("markPrice", 0))
+                        
+                        # 2. Get funding rate history (last 3 to calculate 24h average)
+                        # Binance funding rate is every 8 hours, so 3 periods = 24 hours
+                        funding_response = await client.get(
+                            f"{BINANCE_FUTURES_API_BASE}/fundingRate",
+                            params={"symbol": binance_symbol, "limit": 3}
+                        )
+                        funding_response.raise_for_status()
+                        funding_history = funding_response.json()
+                        
+                        # Calculate 24h average funding rate
+                        funding_rates_24h = [float(f.get("fundingRate", 0)) for f in funding_history]
+                        funding_rate_24h = sum(funding_rates_24h) / len(funding_rates_24h) if funding_rates_24h else current_funding_rate
+                        
+                        # 3. Get open interest
+                        oi_response = await client.get(
+                            f"{BINANCE_FUTURES_API_BASE}/openInterest",
+                            params={"symbol": binance_symbol}
+                        )
+                        oi_response.raise_for_status()
+                        oi_data = oi_response.json()
+                        
+                        open_interest = float(oi_data.get("openInterest", 0))
+                        open_interest_usd = open_interest * mark_price
+                        
+                        # 4. Get long/short ratio (5m period, latest)
+                        ratio_response = await client.get(
+                            f"{BINANCE_FUTURES_API_BASE}/globalLongShortAccountRatio",
+                            params={"symbol": binance_symbol, "period": "5m", "limit": 1}
+                        )
+                        ratio_response.raise_for_status()
+                        ratio_data = ratio_response.json()
+                        
+                        long_short_ratio = float(ratio_data[0].get("longShortRatio", 1.0)) if ratio_data else 1.0
+                        
+                        # 5. Get liquidation data (last 24 hours)
+                        # Note: This endpoint may not be available or may require different parameters
+                        long_liquidation_24h = 0.0
+                        short_liquidation_24h = 0.0
+                        
+                        try:
+                            # Calculate timestamp for 24 hours ago
+                            end_time = int(datetime.utcnow().timestamp() * 1000)
+                            start_time = int((datetime.utcnow() - timedelta(hours=24)).timestamp() * 1000)
+                            
+                            liquidation_response = await client.get(
+                                f"{BINANCE_FUTURES_API_BASE}/forceOrders",
+                                params={
+                                    "symbol": binance_symbol,
+                                    "startTime": start_time,
+                                    "endTime": end_time,
+                                    "limit": 100
+                                }
+                            )
+                            liquidation_response.raise_for_status()
+                            liquidation_data = liquidation_response.json()
+                            
+                            # Calculate total liquidation amounts
+                            for liq in liquidation_data:
+                                side = liq.get("side", "").upper()
+                                executed_qty = float(liq.get("executedQty", 0))
+                                price = float(liq.get("price", 0))
+                                liq_value = executed_qty * price
+                                
+                                if side == "SELL":  # Long liquidation
+                                    long_liquidation_24h += liq_value
+                                elif side == "BUY":  # Short liquidation
+                                    short_liquidation_24h += liq_value
+                        except (httpx.HTTPStatusError, httpx.RequestError, KeyError, ValueError) as e:
+                            # Liquidation data is optional, continue without it
+                            logger.debug(f"Could not fetch liquidation data for {symbol_upper}: {str(e)}")
+                        
+                        result[symbol_upper] = {
+                            "funding_rate": round(current_funding_rate, 6),
+                            "funding_rate_24h": round(funding_rate_24h, 6),
+                            "open_interest": round(open_interest, 2),
+                            "open_interest_usd": round(open_interest_usd, 2),
+                            "long_short_ratio": round(long_short_ratio, 3),
+                            "long_liquidation_24h": round(long_liquidation_24h, 2),
+                            "short_liquidation_24h": round(short_liquidation_24h, 2),
+                            "timestamp": datetime.utcnow().isoformat(),
+                        }
+                        
+                        logger.debug(
+                            f"Fetched derivatives data for {symbol_upper}: "
+                            f"funding_rate={current_funding_rate:.6f}, "
+                            f"oi_usd={open_interest_usd:,.0f}, "
+                            f"long_short={long_short_ratio:.3f}"
+                        )
+                        
+                    except httpx.HTTPStatusError as e:
+                        logger.warning(
+                            f"Binance API error for {symbol_upper}: {e.response.status_code}, "
+                            f"skipping this symbol"
+                        )
+                        continue
+                    except httpx.RequestError as e:
+                        logger.warning(f"Binance API request failed for {symbol_upper}: {str(e)}, skipping")
+                        continue
+                    except (KeyError, ValueError, TypeError) as e:
+                        logger.warning(
+                            f"Error parsing Binance data for {symbol_upper}: {str(e)}, skipping"
+                        )
+                        continue
+            
+            if result:
+                logger.info(
+                    f"Successfully fetched derivatives data for {len(result)} symbols from Binance"
+                )
+                return result
+            else:
+                logger.warning("No derivatives data returned from Binance, using fallback")
+                return await self._fallback_provider.get_derivatives_snapshot(symbols)
+                
+        except Exception as e:
+            logger.warning(f"Unexpected error fetching derivatives from Binance: {str(e)}, using fallback")
+            return await self._fallback_provider.get_derivatives_snapshot(symbols)
 
     async def get_news_snapshot(self, keywords: list[str]) -> list[dict[str, Any]]:
         """

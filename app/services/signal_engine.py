@@ -546,3 +546,5 @@ class SignalEngine:
             "rationale": rationale[:10],  # Limit to 10 items
         }
 
+
+

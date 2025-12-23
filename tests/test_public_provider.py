@@ -78,12 +78,108 @@ async def test_public_provider_spot_fallback(public_provider):
 
 
 @pytest.mark.asyncio
-async def test_public_provider_derivatives_fallback(public_provider):
-    """Test derivatives fallback to mock."""
-    result = await public_provider.get_derivatives_snapshot(["BTC", "ETH"])
+async def test_public_provider_derivatives_success(public_provider):
+    """Test successful derivatives data fetch from Binance."""
+    # Mock Binance API responses
+    premium_response = {
+        "symbol": "BTCUSDT",
+        "markPrice": "45000.00",
+        "lastFundingRate": "0.0001",
+    }
+    
+    funding_history = [
+        {"fundingRate": "0.0001", "fundTime": 1234567890000},
+        {"fundingRate": "0.0002", "fundTime": 1234567890000},
+        {"fundingRate": "0.0003", "fundTime": 1234567890000},
+    ]
+    
+    oi_response = {
+        "symbol": "BTCUSDT",
+        "openInterest": "1000.5",
+    }
+    
+    ratio_response = [
+        {
+            "symbol": "BTCUSDT",
+            "longShortRatio": "1.15",
+            "timestamp": 1234567890000,
+        }
+    ]
+    
+    liquidation_response = [
+        {
+            "symbol": "BTCUSDT",
+            "side": "SELL",
+            "executedQty": "10.0",
+            "price": "45000.00",
+        },
+        {
+            "symbol": "BTCUSDT",
+            "side": "BUY",
+            "executedQty": "5.0",
+            "price": "45000.00",
+        },
+    ]
+    
+    async def mock_get(url, **kwargs):
+        class MockResponse:
+            def __init__(self, data):
+                self._data = data
+            
+            def json(self):
+                return self._data
+            
+            def raise_for_status(self):
+                pass
+        
+        if "premiumIndex" in url:
+            return MockResponse(premium_response)
+        elif "fundingRate" in url:
+            return MockResponse(funding_history)
+        elif "openInterest" in url:
+            return MockResponse(oi_response)
+        elif "globalLongShortAccountRatio" in url:
+            return MockResponse(ratio_response)
+        elif "forceOrders" in url:
+            return MockResponse(liquidation_response)
+        else:
+            return MockResponse({})
+    
+    with patch("app.providers.public_provider.httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.get = mock_get
+        mock_client_class.return_value = mock_client
+        
+        result = await public_provider.get_derivatives_snapshot(["BTC"])
+        
+        assert "BTC" in result
+        assert "funding_rate" in result["BTC"]
+        assert "funding_rate_24h" in result["BTC"]
+        assert "open_interest" in result["BTC"]
+        assert "open_interest_usd" in result["BTC"]
+        assert "long_short_ratio" in result["BTC"]
+        assert "long_liquidation_24h" in result["BTC"]
+        assert "short_liquidation_24h" in result["BTC"]
+        assert result["BTC"]["funding_rate"] == 0.0001
+        assert result["BTC"]["long_short_ratio"] == 1.15
 
-    # Should use mock provider
-    assert "BTC" in result or "ETH" in result
+
+@pytest.mark.asyncio
+async def test_public_provider_derivatives_fallback(public_provider):
+    """Test derivatives fallback to mock when API fails."""
+    with patch("app.providers.public_provider.httpx.AsyncClient") as mock_client_class:
+        mock_client = AsyncMock()
+        mock_client.__aenter__ = AsyncMock(return_value=mock_client)
+        mock_client.__aexit__ = AsyncMock(return_value=None)
+        mock_client.get = AsyncMock(side_effect=Exception("API Error"))
+        mock_client_class.return_value = mock_client
+        
+        result = await public_provider.get_derivatives_snapshot(["BTC", "ETH"])
+        
+        # Should fallback to mock provider
+        assert "BTC" in result or "ETH" in result
 
 
 @pytest.mark.asyncio

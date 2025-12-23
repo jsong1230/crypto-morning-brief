@@ -67,3 +67,4 @@ async def test_dummy_provider():
     assert "total_market_cap" in summary
     assert "total_volume_24h" in summary
     assert "average_change_24h" in summary
+

@@ -51,3 +51,4 @@ def get_usd_to_krw() -> float:
     logger.warning("Using default USD to KRW rate: 1300.0")
     return 1300.0
 
+

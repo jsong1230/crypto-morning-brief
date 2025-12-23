@@ -170,3 +170,4 @@ def test_signal_engine_with_extreme_data():
     assert result["regime"]["label"] == "risk_off", (
         "Extreme conditions should result in risk_off regime"
     )
+

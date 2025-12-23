@@ -459,16 +459,24 @@ make lint
    - `app/providers/base.py`의 `MarketProvider` 인터페이스를 구현
    - `app/providers/factory.py`의 `get_market_provider()` 함수에 추가
 
-#### PublicProvider (CoinGecko API)
+#### PublicProvider (CoinGecko API + RSS Feeds)
 
-`PROVIDER=public`으로 설정하면 CoinGecko 공개 API를 사용하여 실제 시장 가격 데이터를 가져옵니다.
+`PROVIDER=public`으로 설정하면 CoinGecko 공개 API와 RSS 피드를 사용하여 실제 시장 데이터와 뉴스를 가져옵니다.
 
 **특징:**
 - ✅ API 키 불필요 (무료 공개 API)
-- ✅ BTC/ETH 등 주요 암호화폐 실제 가격 제공
+- ✅ BTC/ETH 등 주요 암호화폐 실제 가격 제공 (CoinGecko API)
 - ✅ 24h 변화율, 거래량, 시가총액 등 실제 데이터
-- ⚠️ 파생상품/뉴스는 Mock으로 자동 fallback
+- ✅ 실제 암호화폐 뉴스 (CoinTelegraph, Decrypt, CoinDesk RSS 피드)
+- ⚠️ 파생상품은 아직 Mock으로 자동 fallback (향후 실제 API 추가 예정)
 - ⚠️ API 실패 시 자동으로 Mock으로 fallback
+
+**뉴스 소스:**
+- CoinTelegraph RSS
+- Decrypt RSS
+- CoinDesk RSS
+
+뉴스는 키워드 필터링을 통해 관련 기사만 수집하며, 최대 10개의 최신 뉴스를 반환합니다.
 
 **사용 예시:**
 ```bash
@@ -740,6 +748,11 @@ DAILY REPORT
 | Long/Short Ratio | 1.104 |
 
 ## 📰 News & Events
+
+**실제 뉴스 데이터:**
+- `PROVIDER=public` 설정 시 CoinTelegraph, Decrypt, CoinDesk의 RSS 피드에서 실제 뉴스를 가져옵니다
+- 키워드 기반 필터링으로 관련 뉴스만 수집
+- 감정 분석 (positive/neutral/negative) 포함
 
 **🟢 Bitcoin Price Surges Amid Institutional Adoption**
 - Source: CryptoNews

@@ -32,3 +32,4 @@ def setup_logger(name: str = "crypto-morning-brief") -> logging.Logger:
 
 # Global logger instance
 logger = setup_logger()
+

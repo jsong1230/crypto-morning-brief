@@ -353,14 +353,16 @@ TELEGRAM_CHAT_ID=your_chat_id_here
 ```
 
 **리포트 구성:**
-1. 제목: "Crypto Morning Brief — YYYY-MM-DD (KST)"
-2. 시장 한줄 요약 (BTC/ETH 변화 포함)
-3. Market Regime (risk_on/neutral/risk_off) + 근거
-4. Key Signals Top 5 (critical/warn 우선)
-5. Key Metrics 테이블 (BTC/ETH 각각)
-6. News & Events 요약 (최대 5개)
-7. Market Scenarios 3개 (상방/횡보/하방) - 트리거 조건만
+1. 제목: "암호화폐 모닝 브리프 — YYYY-MM-DD (KST)"
+2. 시장 한줄 요약 (BTC/ETH 변화 포함) - **실제 데이터**
+3. Market Regime (risk_on/neutral/risk_off) + 근거 - **실제 데이터 기반 분석**
+4. Key Signals Top 5 (critical/warn 우선) - **실제 데이터 기반 시그널**
+5. Key Metrics 테이블 (BTC/ETH 각각) - **실제 Spot 및 파생상품 데이터**
+6. News & Events 요약 (최대 5개) - **실제 뉴스 (RSS 피드)**
+7. Market Scenarios 3개 (상방/횡보/하방) - **실제 데이터 기반 트리거 조건**
 8. Disclaimer (리서치용, 투자 조언 아님)
+
+> **참고**: `PROVIDER=public` 설정 시 모든 섹션이 실제 데이터를 사용합니다.
 
 ## 프로젝트 구조
 

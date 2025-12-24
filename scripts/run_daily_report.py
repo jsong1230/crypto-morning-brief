@@ -77,6 +77,18 @@ async def generate_daily_report(
     engine = SignalEngine()
     signal_result = engine.analyze(spot_snapshot, derivatives_snapshot)
 
+    # Fetch stock market data (optional, non-blocking)
+    korea_stocks = None
+    us_stocks = None
+    try:
+        from app.providers.stock_provider import stock_provider
+
+        logger.info("Fetching stock market data...")
+        korea_stocks = await stock_provider.get_korea_stocks()
+        us_stocks = await stock_provider.get_us_stocks()
+    except Exception as e:
+        logger.warning(f"Error fetching stock market data: {str(e)}, continuing without it")
+
     # Generate report
     logger.info("Generating markdown report...")
     writer = ReportWriter()
@@ -87,6 +99,8 @@ async def generate_daily_report(
         signals=signal_result["signals"],
         regime=signal_result["regime"],
         news_snapshot=news_snapshot,
+        korea_stocks=korea_stocks,
+        us_stocks=us_stocks,
     )
 
     logger.info(f"Report generated successfully ({len(markdown)} characters)")

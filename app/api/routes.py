@@ -125,6 +125,18 @@ async def generate_daily_report(
                 detail=f"Failed to analyze market signals: {str(e)}",
             ) from e
 
+        # Fetch stock market data (optional, non-blocking)
+        korea_stocks = None
+        us_stocks = None
+        try:
+            from app.providers.stock_provider import stock_provider
+
+            # Fetch stock data asynchronously
+            korea_stocks = await stock_provider.get_korea_stocks()
+            us_stocks = await stock_provider.get_us_stocks()
+        except Exception as e:
+            logger.warning(f"Error fetching stock market data: {str(e)}, continuing without it")
+
         # Generate report
         try:
             writer = ReportWriter()
@@ -135,6 +147,8 @@ async def generate_daily_report(
                 signals=signal_result["signals"],
                 regime=signal_result["regime"],
                 news_snapshot=news_snapshot,
+                korea_stocks=korea_stocks,
+                us_stocks=us_stocks,
             )
         except Exception as e:
             logger.error(f"Error generating report: {str(e)}", exc_info=True)

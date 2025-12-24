@@ -201,14 +201,24 @@ class PublicProvider(MarketProvider):
                         open_interest_usd = open_interest * mark_price
                         
                         # 4. Get long/short ratio (5m period, latest)
-                        ratio_response = await client.get(
-                            f"{BINANCE_FUTURES_API_BASE}/globalLongShortAccountRatio",
-                            params={"symbol": binance_symbol, "period": "5m", "limit": 1}
-                        )
-                        ratio_response.raise_for_status()
-                        ratio_data = ratio_response.json()
-                        
-                        long_short_ratio = float(ratio_data[0].get("longShortRatio", 1.0)) if ratio_data else 1.0
+                        # Note: This endpoint may require authentication or may not be available
+                        long_short_ratio = 1.0  # Default neutral ratio
+                        try:
+                            ratio_response = await client.get(
+                                f"{BINANCE_FUTURES_API_BASE}/globalLongShortAccountRatio",
+                                params={"symbol": binance_symbol, "period": "5m", "limit": 1}
+                            )
+                            ratio_response.raise_for_status()
+                            ratio_data = ratio_response.json()
+                            
+                            # Check if response is valid JSON (not HTML error page)
+                            if isinstance(ratio_data, list) and len(ratio_data) > 0:
+                                long_short_ratio = float(ratio_data[0].get("longShortRatio", 1.0))
+                            elif isinstance(ratio_data, dict) and "longShortRatio" in ratio_data:
+                                long_short_ratio = float(ratio_data.get("longShortRatio", 1.0))
+                        except (httpx.HTTPStatusError, httpx.RequestError, KeyError, ValueError, TypeError) as e:
+                            # Long/short ratio is optional, use default neutral value
+                            logger.debug(f"Could not fetch long/short ratio for {symbol_upper}: {str(e)}, using default 1.0")
                         
                         # 5. Get liquidation data (last 24 hours)
                         # Note: This endpoint may not be available or may require different parameters

@@ -18,6 +18,8 @@ class ReportWriter:
         signals: list[dict[str, Any]],
         regime: dict[str, Any],
         news_snapshot: list[dict[str, Any]],
+        korea_stocks: dict[str, Any] | None = None,
+        us_stocks: dict[str, Any] | None = None,
     ) -> str:
         """
         Generate markdown report.
@@ -83,7 +85,7 @@ class ReportWriter:
         lines.append(scenarios_section)
         lines.append("")
 
-        # 8. Disclaimer
+        # 9. Disclaimer
         lines.append("## ⚠️ 면책 조항")
         lines.append("")
         lines.append(
@@ -324,6 +326,58 @@ class ReportWriter:
             if url:
                 lines.append(f"- [자세히 보기]({url})")
             lines.append("")
+
+        return "\n".join(lines)
+
+    def _generate_stock_section(
+        self,
+        korea_stocks: dict[str, Any] | None,
+        us_stocks: dict[str, Any] | None,
+    ) -> str:
+        """Generate stock market section."""
+        lines = []
+
+        if korea_stocks:
+            lines.append("### 🇰🇷 한국 주식시장")
+            lines.append("")
+            lines.append("| 지수 | 현재가 | 24h 변화 | 거래량 |")
+            lines.append("|------|--------|----------|--------|")
+
+            for symbol, data in korea_stocks.items():
+                price = data.get("price", 0)
+                change_24h = data.get("change_24h", 0)
+                volume = data.get("volume_24h", 0)
+
+                change_str = f"{change_24h:+.2f}%"
+                change_emoji = "🟢" if change_24h > 0 else "🔴" if change_24h < 0 else "⚪"
+                volume_str = f"{volume:,.0f}" if volume > 0 else "-"
+
+                lines.append(f"| {symbol} | {price:,.2f} | {change_emoji} {change_str} | {volume_str} |")
+
+            lines.append("")
+            lines.append("")
+
+        if us_stocks:
+            lines.append("### 🇺🇸 미국 주식시장")
+            lines.append("")
+            lines.append("| 지수 | 현재가 | 24h 변화 | 거래량 |")
+            lines.append("|------|--------|----------|--------|")
+
+            for symbol, data in us_stocks.items():
+                price = data.get("price", 0)
+                change_24h = data.get("change_24h", 0)
+                volume = data.get("volume_24h", 0)
+
+                change_str = f"{change_24h:+.2f}%"
+                change_emoji = "🟢" if change_24h > 0 else "🔴" if change_24h < 0 else "⚪"
+                volume_str = f"{volume:,.0f}" if volume > 0 else "-"
+
+                lines.append(f"| {symbol} | {price:,.2f} | {change_emoji} {change_str} | {volume_str} |")
+
+            lines.append("")
+
+        if not korea_stocks and not us_stocks:
+            return "주식시장 데이터를 사용할 수 없습니다."
 
         return "\n".join(lines)
 

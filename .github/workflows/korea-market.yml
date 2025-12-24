@@ -1,0 +1,73 @@
+name: Korea Market Morning Brief
+
+on:
+  schedule:
+    # Run daily at KST 08:00 (UTC 23:00 previous day)
+    # Korea market opens at KST 09:00, so this is 1 hour before
+    # KST is UTC+9, so KST 08:00 = UTC 23:00 (previous day)
+    - cron: "0 23 * * *"
+  workflow_dispatch: # Allow manual triggering
+
+jobs:
+  generate-report:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment: telegram  # Use environment secrets
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Generate Korea market report
+        env:
+          SEND_TELEGRAM: "true"
+          TELEGRAM_BOT_TOKEN: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          TELEGRAM_CHAT_ID: ${{ secrets.TELEGRAM_CHAT_ID }}
+          TELEGRAM_PARSE_MODE: "HTML"
+          TELEGRAM_WRAP_PRE: "false"
+          PROVIDER: "public"
+          LOG_LEVEL: "INFO"
+        run: |
+          echo "🇰🇷 Generating Korea market morning brief..."
+          echo "Korea market opens at KST 09:00 (1 hour from now)"
+          echo ""
+          echo "Checking Telegram configuration..."
+          if [ -z "$TELEGRAM_BOT_TOKEN" ]; then
+            echo "❌ ERROR: TELEGRAM_BOT_TOKEN secret is not set!"
+            exit 1
+          fi
+          if [ -z "$TELEGRAM_CHAT_ID" ]; then
+            echo "❌ ERROR: TELEGRAM_CHAT_ID secret is not set!"
+            exit 1
+          fi
+          echo "✅ Telegram secrets are set"
+          echo ""
+          echo "Generating and sending report..."
+          python scripts/run_daily_report.py --tz Asia/Seoul
+          if [ $? -ne 0 ]; then
+            echo "❌ Report generation or Telegram sending failed!"
+            exit 1
+          fi
+          echo "✅ Report generated and sent successfully"
+
+      - name: Upload report artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: korea-market-report-${{ github.run_number }}
+          path: |
+            reports/*.md
+          retention-days: 7
+          if-no-files-found: ignore
+

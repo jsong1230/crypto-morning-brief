@@ -69,14 +69,22 @@ class ReportWriter:
         lines.append(metrics_section)
         lines.append("")
 
-        # 6. News/Events Summary
+        # 6. Stock Markets (if available)
+        if korea_stocks or us_stocks:
+            lines.append("## 📊 주식시장")
+            lines.append("")
+            stock_section = self._generate_stock_section(korea_stocks, us_stocks)
+            lines.append(stock_section)
+            lines.append("")
+
+        # 7. News/Events Summary
         lines.append("## 📰 뉴스 & 이벤트")
         lines.append("")
         news_section = self._generate_news_section(news_snapshot)
         lines.append(news_section)
         lines.append("")
 
-        # 7. Scenarios
+        # 8. Scenarios
         lines.append("## 🔮 시장 시나리오")
         lines.append("")
         scenarios_section = self._generate_scenarios_section(

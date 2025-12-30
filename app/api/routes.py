@@ -10,6 +10,9 @@ from app.models.report import (
 from app.providers.base import MarketProvider
 from app.providers.factory import get_market_provider
 from app.services.report_service import ReportService
+from app.database import get_db
+from sqlalchemy.orm import Session
+from app.services.db_service import DBService
 from app.utils.logger import logger
 
 router = APIRouter()
@@ -51,6 +54,7 @@ async def health_check() -> dict[str, str]:
 async def generate_daily_report(
     request: DailyReportRequestV2,
     provider: MarketProvider = Depends(get_market_provider),
+    db: Session = Depends(get_db),
 ) -> DailyReportResponseV2:
     """
     Generate a daily cryptocurrency report with signals and regime analysis.
@@ -156,6 +160,16 @@ async def generate_daily_report(
                 status_code=500,
                 detail=f"Failed to generate report: {str(e)}",
             ) from e
+
+        # Save to database (non-blocking for the report response)
+        try:
+            DBService.save_report(db, date_str, markdown, signal_result["regime"]["label"])
+            DBService.save_market_snapshots(db, spot_snapshot, derivatives_snapshot)
+            DBService.save_signals(db, signal_result["signals"])
+            logger.info("Market data and report saved to database")
+        except Exception as e:
+            logger.warning(f"Failed to save to database: {str(e)}")
+            # Don't fail the request if DB save fails
 
         logger.info("Daily report generated successfully")
 
@@ -311,6 +325,7 @@ async def generate_morning_brief(
     symbols: str = "BTC,ETH",
     keywords: str = "Bitcoin,Ethereum",
     provider: MarketProvider = Depends(get_market_provider),
+    db: Session = Depends(get_db),
 ) -> dict:
     """
     Generate morning brief report in Markdown format.
@@ -357,6 +372,7 @@ async def generate_morning_brief(
         signal_result = signal_engine.analyze(spot_snapshot, derivatives_snapshot)
 
         # Generate report
+        from app.services.report_writer import ReportWriter
         writer = ReportWriter()
         markdown = writer.generate_report(
             date=date,
@@ -366,6 +382,15 @@ async def generate_morning_brief(
             regime=signal_result["regime"],
             news_snapshot=news_snapshot,
         )
+
+        # Save to database
+        try:
+            DBService.save_report(db, date, markdown, signal_result["regime"]["label"])
+            DBService.save_market_snapshots(db, spot_snapshot, derivatives_snapshot)
+            DBService.save_signals(db, signal_result["signals"])
+            logger.info("Morning brief data and report saved to database")
+        except Exception as e:
+            logger.warning(f"Failed to save morning brief to database: {str(e)}")
 
         return {
             "date": date,

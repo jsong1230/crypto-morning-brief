@@ -160,28 +160,34 @@ class ReportWriter:
         }
 
         emoji, name, desc = regime_map.get(label, ("🟡", "중립", "알 수 없음"))
+        
+        # Add more context to description if it's neutral and rationale is generic
+        if label == "neutral" and (not rationale or "No significant signals detected" in rationale[0]):
+            desc = "시장이 뚜렷한 방향성 없이 횡보하거나 보합세를 유지하고 있습니다."
 
         lines = [f"**{emoji} {name}** — {desc}", ""]
 
-        if rationale:
+        if rationale and not (len(rationale) == 1 and "No significant signals detected" in rationale[0]):
             lines.append("**주요 요인:**")
             for item in rationale[:5]:  # Limit to 5 items
                 lines.append(f"- {item}")
         else:
-            lines.append("중요한 요인이 확인되지 않았습니다.")
+            lines.append("**주요 요인:**")
+            lines.append("- 현재 대규모 변동성을 유발할만한 기술적 시그널이 감지되지 않았습니다.")
+            lines.append("- 시장은 주요 지표들의 추가적인 방향성을 대기 중인 상태입니다.")
 
         return "\n".join(lines)
 
     def _generate_signals_section(self, signals: list[dict[str, Any]]) -> str:
         """Generate signals section (Top 5, critical/warn prioritized)."""
         if not signals:
-            return "현재 시점에서 중요한 시그널이 감지되지 않았습니다."
+            return "현재 시점에서 특이 시그널이 감지되지 않았습니다. 전반적인 시장 지표는 안정적입니다."
 
         # Sort signals: critical > warn > info
         level_priority = {"critical": 0, "warn": 1, "info": 2}
         sorted_signals = sorted(
             signals, key=lambda s: level_priority.get(s.get("level", "info"), 2)
-        )[:5]  # Top 5
+        )[:7]  # Show up to 7 signals to provide more context
 
         lines = []
         for signal in sorted_signals:

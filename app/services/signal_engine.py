@@ -9,20 +9,20 @@ class SignalEngine:
 
     # Thresholds for various rules
     THRESHOLDS = {
-        "funding_rate_overheated": 0.01,  # 1% per 8h
-        "funding_rate_extreme": 0.05,  # 5% per 8h
-        "oi_increase_critical": 0.3,  # 30% increase
-        "oi_increase_warning": 0.15,  # 15% increase
-        "volatility_extreme": 0.15,  # 15% daily change
-        "volatility_high": 0.10,  # 10% daily change
-        "volume_surge_zscore": 2.0,  # 2 standard deviations
-        "price_oi_surge_price": 0.05,  # 5% price increase
-        "price_oi_surge_oi": 0.20,  # 20% OI increase
-        "price_drop_volume_price": -0.05,  # -5% price drop
-        "price_drop_volume_volume": 0.5,  # 50% volume increase
-        "long_short_ratio_extreme": 1.5,  # 1.5:1 or 0.67:1
-        "long_short_ratio_warning": 1.3,  # 1.3:1 or 0.77:1
-        "liquidation_risk_ratio": 0.1,  # 10% of OI
+        "funding_rate_overheated": 0.005,  # 0.5% per 8h (lowered from 1%)
+        "funding_rate_extreme": 0.02,  # 2% per 8h (lowered from 5%)
+        "oi_increase_critical": 0.2,  # 20% increase (lowered from 30%)
+        "oi_increase_warning": 0.1,  # 10% increase (lowered from 15%)
+        "volatility_extreme": 0.08,  # 8% daily change (lowered from 15%)
+        "volatility_high": 0.05,  # 5% daily change (lowered from 10%)
+        "volume_surge_zscore": 1.5,  # 1.5 standard deviations (lowered from 2.0)
+        "price_oi_surge_price": 0.03,  # 3% price increase (lowered from 5%)
+        "price_oi_surge_oi": 0.10,  # 10% OI increase (lowered from 20%)
+        "price_drop_volume_price": -0.03,  # -3% price drop (lowered from -5%)
+        "price_drop_volume_volume": 0.3,  # 30% volume increase (lowered from 50%)
+        "long_short_ratio_extreme": 1.4,  # 1.4:1 (lowered from 1.5)
+        "long_short_ratio_warning": 1.2,  # 1.2:1 (lowered from 1.3)
+        "liquidation_risk_ratio": 0.05,  # 5% of OI (lowered from 10%)
     }
 
     def __init__(self):
@@ -159,6 +159,7 @@ class SignalEngine:
         """Rule 2: Check if open interest has surged."""
         oi = deriv_data.get("open_interest", 0)
         oi_usd = deriv_data.get("open_interest_usd", oi)
+        signal = None
 
         # Store historical data for comparison
         if symbol not in self._historical_data:
@@ -177,17 +178,18 @@ class SignalEngine:
                     level = "warn"
                     threshold = self.THRESHOLDS["oi_increase_warning"]
                 else:
-                    return None
+                    level = None
 
-                return {
-                    "id": f"{symbol}_oi_surge",
-                    "level": level,
-                    "title": f"{symbol} Open Interest Surge",
-                    "reason": f"OI increased {oi_change * 100:.1f}% in 24h",
-                    "metric": "open_interest_change_24h",
-                    "threshold": threshold,
-                    "value": oi_change,
-                }
+                if level:
+                    signal = {
+                        "id": f"{symbol}_oi_surge",
+                        "level": level,
+                        "title": f"{symbol} Open Interest Surge",
+                        "reason": f"OI increased {oi_change * 100:.1f}% in 24h",
+                        "metric": "open_interest_change_24h",
+                        "threshold": threshold,
+                        "value": oi_change,
+                    }
 
         # Store current data
         hist.append(
@@ -200,7 +202,7 @@ class SignalEngine:
         if len(hist) > 10:
             self._historical_data[symbol] = hist[-10:]
 
-        return None
+        return signal
 
     def _check_volatility_spike(
         self, symbol: str, spot_data: dict[str, Any]
@@ -543,8 +545,13 @@ class SignalEngine:
 
         return {
             "label": label,
-            "rationale": rationale[:10],  # Limit to 10 items
+            "rationale": rationale[:10] if rationale else ["Market is in a balanced state with no extreme signals"],
         }
+
+
+# Global instance for persistence
+signal_engine = SignalEngine()
+
 
 
 

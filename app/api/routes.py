@@ -116,8 +116,8 @@ async def generate_daily_report(
 
         # Analyze signals
         try:
-            engine = SignalEngine()
-            signal_result = engine.analyze(spot_snapshot, derivatives_snapshot)
+            from app.services.signal_engine import signal_engine
+            signal_result = signal_engine.analyze(spot_snapshot, derivatives_snapshot)
         except Exception as e:
             logger.error(f"Error analyzing signals: {str(e)}", exc_info=True)
             raise HTTPException(
@@ -290,8 +290,8 @@ async def analyze_signals(
         derivatives_snapshot = await provider.get_derivatives_snapshot(symbol_list)
 
         # Analyze with signal engine
-        engine = SignalEngine()
-        result = engine.analyze(spot_snapshot, derivatives_snapshot)
+        from app.services.signal_engine import signal_engine
+        result = signal_engine.analyze(spot_snapshot, derivatives_snapshot)
 
         return {
             "symbols": symbol_list,
@@ -353,8 +353,8 @@ async def generate_morning_brief(
         news_snapshot = await provider.get_news_snapshot(keyword_list)
 
         # Analyze signals
-        engine = SignalEngine()
-        signal_result = engine.analyze(spot_snapshot, derivatives_snapshot)
+        from app.services.signal_engine import signal_engine
+        signal_result = signal_engine.analyze(spot_snapshot, derivatives_snapshot)
 
         # Generate report
         writer = ReportWriter()

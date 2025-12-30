@@ -395,14 +395,27 @@ class ReportWriter:
         derivatives_snapshot: dict[str, Any],
         signals: list[dict[str, Any]],
     ) -> str:
-        """Generate market scenarios (upside/sideways/downside) with trigger conditions only."""
+        """Generate market scenarios (upside/sideways/downside) with actual data values."""
         btc_spot = spot_snapshot.get("BTC", {})
         btc_deriv = derivatives_snapshot.get("BTC", {})
         eth_spot = spot_snapshot.get("ETH", {})
+        eth_deriv = derivatives_snapshot.get("ETH", {})
 
-        btc_spot.get("price", 0)
+        btc_price = btc_spot.get("price", 0)
         btc_change = btc_spot.get("change_24h", 0)
+        btc_volume = btc_spot.get("volume_24h", 0)
         eth_change = eth_spot.get("change_24h", 0)
+        eth_volume = eth_spot.get("volume_24h", 0)
+
+        btc_funding = btc_deriv.get("funding_rate", 0)
+        btc_funding_24h = btc_deriv.get("funding_rate_24h", 0)
+        btc_long_short = btc_deriv.get("long_short_ratio", 1.0)
+        btc_oi = btc_deriv.get("open_interest_usd", 0)
+        btc_long_liq = btc_deriv.get("long_liquidation_24h", 0)
+        btc_short_liq = btc_deriv.get("short_liquidation_24h", 0)
+
+        eth_funding = eth_deriv.get("funding_rate", 0)
+        eth_long_short = eth_deriv.get("long_short_ratio", 1.0)
 
         # Count signal levels
         critical_count = sum(1 for s in signals if s.get("level") == "critical")
@@ -413,33 +426,73 @@ class ReportWriter:
         # Upside Scenario
         lines.append("### 📈 상승 시나리오")
         triggers = []
-        if btc_change > 0 and eth_change > 0:
-            triggers.append("BTC와 ETH 모두 지속적인 상승 모멘텀")
-        if btc_deriv.get("funding_rate", 0) < 0.001:
-            triggers.append("펀딩 레이트가 낮게 유지 (롱 스퀴즈 리스크 없음)")
-        if btc_deriv.get("long_short_ratio", 1.0) < 1.2:
-            triggers.append("롱/숏 비율이 과도하게 확대되지 않음")
+        
+        # Price momentum
+        if btc_change > 2 and eth_change > 2:
+            triggers.append(f"BTC {btc_change:+.2f}%, ETH {eth_change:+.2f}% - 강한 상승 모멘텀")
+        elif btc_change > 0 and eth_change > 0:
+            triggers.append(f"BTC {btc_change:+.2f}%, ETH {eth_change:+.2f}% - 양의 모멘텀")
+        
+        # Funding rate analysis
+        if btc_funding < 0.0001 and eth_funding < 0.0001:
+            triggers.append(f"펀딩 레이트 매우 낮음 (BTC: {btc_funding*100:.4f}%, ETH: {eth_funding*100:.4f}%) - 롱 스퀴즈 리스크 낮음")
+        elif btc_funding < 0.001:
+            triggers.append(f"BTC 펀딩 레이트 낮음 ({btc_funding*100:.4f}%) - 롱 포지션 유리")
+        
+        # Long/short ratio
+        if btc_long_short < 1.1:
+            triggers.append(f"롱/숏 비율 균형 (BTC: {btc_long_short:.2f}) - 과도한 레버리지 없음")
+        elif btc_long_short < 1.2:
+            triggers.append(f"롱/숏 비율 적정 (BTC: {btc_long_short:.2f})")
+        
+        # Signal status
         if warn_count == 0 and critical_count == 0:
-            triggers.append("중요한 경고 시그널 없음")
+            triggers.append("중요한 경고 시그널 없음 - 시장 안정")
+        
+        # Volume confirmation
+        if btc_volume > 0:
+            volume_b = btc_volume / 1_000_000_000
+            triggers.append(f"거래량 확인 필요 (BTC 24h: ${volume_b:.2f}B)")
+        
+        # Default if no specific triggers
         if not triggers:
-            triggers.append("거래량 확인과 함께 주요 저항선 돌파")
-
-        for trigger in triggers[:3]:  # Max 3 triggers
+            triggers.append("주요 저항선 돌파 시 상승 가능성")
+        
+        # Show top 3 most relevant triggers
+        for trigger in triggers[:3]:
             lines.append(f"- {trigger}")
         lines.append("")
 
         # Sideways Scenario
         lines.append("### ➡️ 횡보 시나리오")
         triggers = []
-        if abs(btc_change) < 3 and abs(eth_change) < 3:
-            triggers.append("낮은 변동성과 범위 내 가격 움직임")
-        if btc_deriv.get("funding_rate", 0) > -0.001 and btc_deriv.get("funding_rate", 0) < 0.001:
-            triggers.append("펀딩 레이트가 중립 수준 근처 (균형 상태)")
+        
+        # Volatility check
+        if abs(btc_change) < 2 and abs(eth_change) < 2:
+            triggers.append(f"낮은 변동성 (BTC: {btc_change:+.2f}%, ETH: {eth_change:+.2f}%) - 범위 내 움직임")
+        elif abs(btc_change) < 3 and abs(eth_change) < 3:
+            triggers.append(f"중간 변동성 (BTC: {btc_change:+.2f}%, ETH: {eth_change:+.2f}%)")
+        
+        # Funding rate neutral
+        if abs(btc_funding) < 0.001 and abs(eth_funding) < 0.001:
+            triggers.append(f"펀딩 레이트 중립 (BTC: {btc_funding*100:.4f}%, ETH: {eth_funding*100:.4f}%) - 균형 상태")
+        elif abs(btc_funding) < 0.002:
+            triggers.append(f"BTC 펀딩 레이트 중립 ({btc_funding*100:.4f}%)")
+        
+        # Long/short ratio balanced
+        if 0.9 <= btc_long_short <= 1.1:
+            triggers.append(f"롱/숏 비율 균형 (BTC: {btc_long_short:.2f})")
+        
+        # Signal status
         if warn_count > 0 and critical_count == 0:
-            triggers.append("일부 경고 시그널 있으나 중요한 문제 없음")
+            triggers.append(f"일부 경고 시그널 ({warn_count}개) 있으나 중요한 문제 없음")
+        elif warn_count == 0 and critical_count == 0:
+            triggers.append("중요 시그널 없음 - 안정적 상태")
+        
+        # Default
         if not triggers:
-            triggers.append("지지선과 저항선 사이에서 가격 정체")
-
+            triggers.append("지지선과 저항선 사이에서 가격 정체 가능")
+        
         for trigger in triggers[:3]:
             lines.append(f"- {trigger}")
         lines.append("")
@@ -447,17 +500,46 @@ class ReportWriter:
         # Downside Scenario
         lines.append("### 📉 하락 시나리오")
         triggers = []
+        
+        # Critical signals
         if critical_count >= 1:
-            triggers.append("중요 시그널 감지 (예: 극단적 펀딩 레이트, 청산 리스크)")
+            critical_signals = [s.get("title", "Unknown") for s in signals if s.get("level") == "critical"]
+            triggers.append(f"중요 시그널 {critical_count}개 감지: {', '.join(critical_signals[:2])}")
+        
+        # Price drop
         if btc_change < -5 or eth_change < -5:
-            triggers.append("급격한 가격 하락과 매도 압력 증가")
-        if btc_deriv.get("funding_rate", 0) > 0.01:
-            triggers.append("높은 펀딩 레이트는 롱 스퀴즈 리스크를 시사")
-        if btc_deriv.get("long_short_ratio", 1.0) > 1.5:
-            triggers.append("극단적인 롱/숏 비율은 과도한 레버리지 롱 포지션을 시사")
+            triggers.append(f"급격한 가격 하락 (BTC: {btc_change:+.2f}%, ETH: {eth_change:+.2f}%) - 매도 압력 증가")
+        elif btc_change < -3 or eth_change < -3:
+            triggers.append(f"가격 하락 (BTC: {btc_change:+.2f}%, ETH: {eth_change:+.2f}%)")
+        elif btc_change < 0 and eth_change < 0:
+            triggers.append(f"약세 모멘텀 (BTC: {btc_change:+.2f}%, ETH: {eth_change:+.2f}%)")
+        
+        # High funding rate (long squeeze risk)
+        if btc_funding > 0.01:
+            triggers.append(f"펀딩 레이트 매우 높음 (BTC: {btc_funding*100:.4f}%) - 롱 스퀴즈 리스크 높음")
+        elif btc_funding > 0.005:
+            triggers.append(f"펀딩 레이트 높음 (BTC: {btc_funding*100:.4f}%) - 롱 포지션 부담")
+        
+        # Extreme long/short ratio
+        if btc_long_short > 1.5:
+            triggers.append(f"극단적 롱/숏 비율 (BTC: {btc_long_short:.2f}) - 과도한 레버리지 롱 포지션")
+        elif btc_long_short > 1.3:
+            triggers.append(f"높은 롱/숏 비율 (BTC: {btc_long_short:.2f}) - 롱 포지션 과다")
+        
+        # Liquidation risk
+        if btc_long_liq > 0 and btc_oi > 0:
+            liq_ratio = (btc_long_liq / btc_oi) * 100 if btc_oi > 0 else 0
+            if liq_ratio > 0.1:
+                triggers.append(f"청산 리스크 높음 (롱 청산: ${btc_long_liq/1_000_000:.1f}M, OI 대비 {liq_ratio:.2f}%)")
+        
+        # Warning signals
+        if warn_count >= 2:
+            triggers.append(f"경고 시그널 다수 ({warn_count}개) - 주의 필요")
+        
+        # Default
         if not triggers:
-            triggers.append("거래량 확인과 함께 주요 지지선 이탈")
-
+            triggers.append("주요 지지선 이탈 시 추가 하락 가능성")
+        
         for trigger in triggers[:3]:
             lines.append(f"- {trigger}")
 

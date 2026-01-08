@@ -410,3 +410,120 @@ async def generate_morning_brief(
         raise HTTPException(
             status_code=500, detail=f"Failed to generate morning brief: {str(e)}"
         ) from e
+
+
+@router.get("/report/history")
+async def get_report_history(
+    date: str | None = None,
+    limit: int = 10,
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Get historical reports.
+
+    Args:
+        date: Date string in YYYY-MM-DD format. If None, returns recent reports.
+        limit: Maximum number of reports to return (default: 10, max: 100).
+
+    Returns:
+        Dictionary with list of reports.
+    """
+    try:
+        from datetime import datetime
+
+        # Validate limit
+        if limit < 1:
+            limit = 1
+        elif limit > 100:
+            limit = 100
+
+        if date:
+            # Get reports for specific date
+            try:
+                datetime.strptime(date, "%Y-%m-%d").date()  # noqa: DTZ007
+            except ValueError as ve:
+                raise HTTPException(
+                    status_code=400, detail="Date must be in YYYY-MM-DD format"
+                ) from ve
+
+            reports = DBService.get_reports_by_date(db, date)
+            reports_data = [
+                {
+                    "id": r.id,
+                    "date": r.date,
+                    "regime_label": r.regime_label,
+                    "generated_at": r.generated_at.isoformat() if r.generated_at else None,
+                    "markdown": r.markdown,
+                }
+                for r in reports
+            ]
+        else:
+            # Get recent reports
+            from sqlalchemy import desc
+            from app.models.db import Report
+
+            reports = (
+                db.query(Report)
+                .order_by(desc(Report.generated_at))
+                .limit(limit)
+                .all()
+            )
+            reports_data = [
+                {
+                    "id": r.id,
+                    "date": r.date,
+                    "regime_label": r.regime_label,
+                    "generated_at": r.generated_at.isoformat() if r.generated_at else None,
+                    "markdown": r.markdown,
+                }
+                for r in reports
+            ]
+
+        return {
+            "count": len(reports_data),
+            "reports": reports_data,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching report history: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch report history: {str(e)}"
+        ) from e
+
+
+@router.get("/report/{report_id}")
+async def get_report_by_id(
+    report_id: int,
+    db: Session = Depends(get_db),
+) -> dict:
+    """
+    Get a specific report by ID.
+
+    Args:
+        report_id: Report ID.
+
+    Returns:
+        Dictionary with report data.
+    """
+    try:
+        from app.models.db import Report
+
+        report = db.query(Report).filter(Report.id == report_id).first()
+        if not report:
+            raise HTTPException(status_code=404, detail="Report not found")
+
+        return {
+            "id": report.id,
+            "date": report.date,
+            "regime_label": report.regime_label,
+            "generated_at": report.generated_at.isoformat() if report.generated_at else None,
+            "markdown": report.markdown,
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching report {report_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=500, detail=f"Failed to fetch report: {str(e)}"
+        ) from e

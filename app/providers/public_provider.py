@@ -10,6 +10,7 @@ import httpx
 from app.providers.base import MarketProvider
 from app.providers.mock_provider import MockMarketProvider
 from app.utils.logger import logger
+from app.utils.retry import retry_with_backoff
 
 # CoinGecko API endpoints (free, no API key required)
 COINGECKO_API_BASE = "https://api.coingecko.com/api/v3"
@@ -88,22 +89,29 @@ class PublicProvider(MarketProvider):
                 logger.warning("No valid symbols found, using fallback")
                 return await self._fallback_provider.get_spot_snapshot(symbols)
 
-            # Fetch data from CoinGecko
-            async with httpx.AsyncClient(timeout=self._http_timeout) as client:
-                # Get simple price data
-                params = {
-                    "ids": ",".join(coin_ids),
-                    "vs_currencies": "usd",
-                    "include_24hr_change": "true",
-                    "include_24hr_vol": "true",
-                    "include_market_cap": "true",
-                    "include_24hr_high": "true",
-                    "include_24hr_low": "true",
-                }
+            # Fetch data from CoinGecko with retry logic
+            async def fetch_price_data():
+                async with httpx.AsyncClient(timeout=self._http_timeout) as client:
+                    params = {
+                        "ids": ",".join(coin_ids),
+                        "vs_currencies": "usd",
+                        "include_24hr_change": "true",
+                        "include_24hr_vol": "true",
+                        "include_market_cap": "true",
+                        "include_24hr_high": "true",
+                        "include_24hr_low": "true",
+                    }
+                    response = await client.get(COINGECKO_SIMPLE_PRICE, params=params)
+                    response.raise_for_status()
+                    return response.json()
 
-                response = await client.get(COINGECKO_SIMPLE_PRICE, params=params)
-                response.raise_for_status()
-                price_data = response.json()
+            price_data = await retry_with_backoff(
+                fetch_price_data,
+                max_retries=3,
+                initial_delay=1.0,
+                max_delay=30.0,
+                backoff_factor=2.0,
+            )
 
             # Transform CoinGecko data to our format
             result: dict[str, Any] = {}
@@ -165,37 +173,60 @@ class PublicProvider(MarketProvider):
                     binance_symbol = SYMBOL_TO_BINANCE_SYMBOL[symbol_upper]
                     
                     try:
-                        # 1. Get current funding rate and mark price
-                        premium_response = await client.get(
-                            f"{BINANCE_FUTURES_API_BASE}/premiumIndex",
-                            params={"symbol": binance_symbol}
+                        # 1. Get current funding rate and mark price (with retry)
+                        async def fetch_premium_data():
+                            response = await client.get(
+                                f"{BINANCE_FUTURES_API_BASE}/premiumIndex",
+                                params={"symbol": binance_symbol}
+                            )
+                            response.raise_for_status()
+                            return response.json()
+                        
+                        premium_data = await retry_with_backoff(
+                            fetch_premium_data,
+                            max_retries=2,
+                            initial_delay=0.5,
+                            max_delay=10.0,
                         )
-                        premium_response.raise_for_status()
-                        premium_data = premium_response.json()
                         
                         current_funding_rate = float(premium_data.get("lastFundingRate", 0))
                         mark_price = float(premium_data.get("markPrice", 0))
                         
-                        # 2. Get funding rate history (last 3 to calculate 24h average)
-                        # Binance funding rate is every 8 hours, so 3 periods = 24 hours
-                        funding_response = await client.get(
-                            f"{BINANCE_FUTURES_API_BASE}/fundingRate",
-                            params={"symbol": binance_symbol, "limit": 3}
+                        # 2. Get funding rate history (last 3 to calculate 24h average) (with retry)
+                        async def fetch_funding_history():
+                            response = await client.get(
+                                f"{BINANCE_FUTURES_API_BASE}/fundingRate",
+                                params={"symbol": binance_symbol, "limit": 3}
+                            )
+                            response.raise_for_status()
+                            return response.json()
+                        
+                        funding_history = await retry_with_backoff(
+                            fetch_funding_history,
+                            max_retries=2,
+                            initial_delay=0.5,
+                            max_delay=10.0,
                         )
-                        funding_response.raise_for_status()
-                        funding_history = funding_response.json()
                         
                         # Calculate 24h average funding rate
                         funding_rates_24h = [float(f.get("fundingRate", 0)) for f in funding_history]
                         funding_rate_24h = sum(funding_rates_24h) / len(funding_rates_24h) if funding_rates_24h else current_funding_rate
                         
-                        # 3. Get open interest
-                        oi_response = await client.get(
-                            f"{BINANCE_FUTURES_API_BASE}/openInterest",
-                            params={"symbol": binance_symbol}
+                        # 3. Get open interest (with retry)
+                        async def fetch_open_interest():
+                            response = await client.get(
+                                f"{BINANCE_FUTURES_API_BASE}/openInterest",
+                                params={"symbol": binance_symbol}
+                            )
+                            response.raise_for_status()
+                            return response.json()
+                        
+                        oi_data = await retry_with_backoff(
+                            fetch_open_interest,
+                            max_retries=2,
+                            initial_delay=0.5,
+                            max_delay=10.0,
                         )
-                        oi_response.raise_for_status()
-                        oi_data = oi_response.json()
                         
                         open_interest = float(oi_data.get("openInterest", 0))
                         open_interest_usd = open_interest * mark_price
@@ -353,8 +384,18 @@ class PublicProvider(MarketProvider):
             for feed_url in RSS_FEEDS:
                 try:
                     logger.debug(f"Fetching RSS feed: {feed_url}")
-                    response = await client.get(feed_url)
-                    response.raise_for_status()
+                    
+                    async def fetch_rss_feed():
+                        response = await client.get(feed_url)
+                        response.raise_for_status()
+                        return response
+                    
+                    response = await retry_with_backoff(
+                        fetch_rss_feed,
+                        max_retries=2,
+                        initial_delay=0.5,
+                        max_delay=10.0,
+                    )
                     
                     # Parse RSS XML
                     try:

@@ -10,6 +10,8 @@
 - **실제 데이터 기반 분석**: 시장 국면, 시그널, 시나리오 모두 실제 데이터로 생성
 - **확장 가능한 Provider 구조**: 외부 API 연동을 위한 인터페이스 기반 설계
 - **자동 Fallback**: API 실패 시 Mock 데이터로 자동 전환
+- **재시도 로직**: Exponential backoff를 사용한 자동 재시도 (Rate limit 및 서버 에러 처리)
+- **히스토리 조회**: 과거 리포트 조회 및 검색 기능
 
 ## 요구사항
 
@@ -343,16 +345,61 @@ TELEGRAM_CHAT_ID=your_chat_id_here
 ```json
 {
   "date": "2024-01-15",
-  "markdown": "# Crypto Morning Brief — 2024-01-15 (KST)\n...",
+  "markdown": "# 암호화폐 모닝 브리프 — 2024-01-15 (KST)\n...",
   "metadata": {
     "symbols": ["BTC", "ETH", "SOL"],
-    "keywords": ["Bitcoin", "Ethereum"],
+    "keywords": ["Bitcoin", "Ethereum", "Solana"],
     "signals_count": 5,
     "regime": "neutral",
     "generated_at": "2024-01-15T12:00:00"
   }
 }
 ```
+
+### GET `/api/v1/report/history`
+
+과거 리포트 조회
+
+**쿼리 파라미터:**
+- `date`: 날짜 (YYYY-MM-DD 형식, 선택사항). 지정 시 해당 날짜의 리포트 조회, 미지정 시 최근 리포트 조회
+- `limit`: 반환할 리포트 개수 (기본값: 10, 최대: 100)
+
+**응답:**
+```json
+{
+  "count": 2,
+  "reports": [
+    {
+      "id": 1,
+      "date": "2024-01-15",
+      "regime_label": "neutral",
+      "generated_at": "2024-01-15T12:00:00",
+      "markdown": "# 암호화폐 모닝 브리프 — 2024-01-15 (KST)\n..."
+    }
+  ]
+}
+```
+
+### GET `/api/v1/report/{report_id}`
+
+특정 리포트 ID로 조회
+
+**경로 파라미터:**
+- `report_id`: 리포트 ID (정수)
+
+**응답:**
+```json
+{
+  "id": 1,
+  "date": "2024-01-15",
+  "regime_label": "neutral",
+  "generated_at": "2024-01-15T12:00:00",
+  "markdown": "# 암호화폐 모닝 브리프 — 2024-01-15 (KST)\n..."
+}
+```
+
+**에러 응답:**
+- `404`: 리포트를 찾을 수 없음
 
 **리포트 구성:**
 1. 제목: "암호화폐 모닝 브리프 — YYYY-MM-DD (KST)"
@@ -469,7 +516,7 @@ make lint
 
 **특징:**
 - ✅ API 키 불필요 (무료 공개 API)
-- ✅ BTC/ETH 등 주요 암호화폐 실제 가격 제공 (CoinGecko API)
+- ✅ BTC/ETH/SOL 등 주요 암호화폐 실제 가격 제공 (CoinGecko API)
 - ✅ 24h 변화율, 거래량, 시가총액 등 실제 데이터
 - ✅ **실제 파생상품 데이터** (Binance Futures API)
   - 펀딩 레이트 (8h, 24h 평균)
@@ -477,6 +524,9 @@ make lint
   - 롱/숏 비율
   - 청산 데이터 (24h)
 - ✅ 실제 암호화폐 뉴스 (CoinTelegraph, Decrypt, CoinDesk RSS 피드)
+- ✅ **자동 재시도 로직** (Exponential backoff)
+  - Rate limit (429) 및 서버 에러 (5xx) 자동 재시도
+  - 최대 3회 재시도, 지수 백오프 적용
 - ⚠️ API 실패 시 자동으로 Mock으로 fallback
 
 **데이터 소스:**
@@ -590,6 +640,15 @@ curl "http://localhost:8000/api/v1/signals/analyze?symbols=BTC,ETH,SOL"
 
 # 모닝 브리프 리포트 생성
 curl "http://localhost:8000/api/v1/report/morning-brief?date=2024-01-15"
+
+# 과거 리포트 조회 (최근 10개)
+curl "http://localhost:8000/api/v1/report/history?limit=10"
+
+# 특정 날짜 리포트 조회
+curl "http://localhost:8000/api/v1/report/history?date=2024-01-15"
+
+# 특정 리포트 ID로 조회
+curl "http://localhost:8000/api/v1/report/1"
 ```
 
 ## 스케줄러 실행

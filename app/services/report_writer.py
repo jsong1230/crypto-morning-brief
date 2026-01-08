@@ -133,17 +133,21 @@ class ReportWriter:
         return "\n".join(lines)
 
     def _generate_market_summary(self, spot_snapshot: dict[str, Any]) -> str:
-        """Generate one-line market summary."""
+        """Generate one-line market summary with BTC, ETH, and SOL."""
         btc_data = spot_snapshot.get("BTC", {})
         eth_data = spot_snapshot.get("ETH", {})
+        sol_data = spot_snapshot.get("SOL", {})
 
         btc_price = btc_data.get("price", 0)
         btc_change = btc_data.get("change_24h", 0)
         eth_price = eth_data.get("price", 0)
         eth_change = eth_data.get("change_24h", 0)
+        sol_price = sol_data.get("price", 0)
+        sol_change = sol_data.get("change_24h", 0)
 
         btc_emoji = "📈" if btc_change >= 0 else "📉"
         eth_emoji = "📈" if eth_change >= 0 else "📉"
+        sol_emoji = "📈" if sol_change >= 0 else "📉"
 
         # Get current USD to KRW exchange rate
         usd_to_krw = get_usd_to_krw()
@@ -151,19 +155,37 @@ class ReportWriter:
         # Convert to KRW
         btc_price_krw = btc_price * usd_to_krw
         eth_price_krw = eth_price * usd_to_krw
+        sol_price_krw = sol_price * usd_to_krw
 
-        summary = (
-            f"**BTC** {btc_emoji} ₩{btc_price_krw:,.0f} ({btc_change:+.2f}%) | "
-            f"**ETH** {eth_emoji} ₩{eth_price_krw:,.0f} ({eth_change:+.2f}%)"
-        )
-
-        # Add market sentiment
-        if btc_change > 0 and eth_change > 0:
-            summary += " — 시장이 상승 모멘텀을 보이고 있음"
-        elif btc_change < 0 and eth_change < 0:
-            summary += " — 시장이 매도 압력을 받고 있음"
+        # Build summary without markdown bold for better Telegram rendering
+        if sol_data:
+            summary = (
+                f"BTC {btc_emoji} ₩{btc_price_krw:,.0f} ({btc_change:+.2f}%) | "
+                f"ETH {eth_emoji} ₩{eth_price_krw:,.0f} ({eth_change:+.2f}%) | "
+                f"SOL {sol_emoji} ₩{sol_price_krw:,.0f} ({sol_change:+.2f}%)"
+            )
         else:
-            summary += " — 시장에 혼재된 신호"
+            summary = (
+                f"BTC {btc_emoji} ₩{btc_price_krw:,.0f} ({btc_change:+.2f}%) | "
+                f"ETH {eth_emoji} ₩{eth_price_krw:,.0f} ({eth_change:+.2f}%)"
+            )
+
+        # Add market sentiment based on average change
+        changes = [btc_change, eth_change]
+        if sol_data:
+            changes.append(sol_change)
+        avg_change = sum(changes) / len(changes)
+        
+        if avg_change > 2:
+            summary += " — 시장이 강한 상승 모멘텀을 보이고 있음"
+        elif avg_change > 0:
+            summary += " — 시장이 상승 추세를 보이고 있음"
+        elif avg_change < -2:
+            summary += " — 시장이 매도 압력을 받고 있음"
+        elif avg_change < 0:
+            summary += " — 시장이 하락 압력을 받고 있음"
+        else:
+            summary += " — 시장이 보합세를 유지하고 있음"
 
         return summary
 

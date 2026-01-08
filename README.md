@@ -119,7 +119,7 @@ python -m app.main
 **요청 본문:**
 ```json
 {
-  "symbols": ["BTC", "ETH"],
+  "symbols": ["BTC", "ETH", "SOL"],
   "keywords": ["bitcoin", "ethereum"],
   "tz": "Asia/Seoul"
 }
@@ -167,7 +167,7 @@ curl -X POST "http://localhost:8000/api/v1/report/daily" \
 curl -X POST "http://localhost:8000/api/v1/report/daily" \
   -H "Content-Type: application/json" \
   -d '{
-    "symbols": ["BTC", "ETH"],
+    "symbols": ["BTC", "ETH", "SOL"],
     "keywords": ["bitcoin", "ethereum"],
     "tz": "Asia/Seoul"
   }'
@@ -214,7 +214,7 @@ TELEGRAM_CHAT_ID=your_chat_id_here
 스팟 시장 스냅샷 조회
 
 **쿼리 파라미터:**
-- `symbols`: 쉼표로 구분된 심볼 목록 (예: "BTC,ETH")
+- `symbols`: 쉼표로 구분된 심볼 목록 (예: "BTC,ETH,SOL")
 
 **응답:**
 ```json
@@ -230,7 +230,7 @@ TELEGRAM_CHAT_ID=your_chat_id_here
       "timestamp": "2024-01-15T12:00:00"
     }
   },
-  "symbols": ["BTC", "ETH"]
+  "symbols": ["BTC", "ETH", "SOL"]
 }
 ```
 
@@ -239,7 +239,7 @@ TELEGRAM_CHAT_ID=your_chat_id_here
 파생상품 시장 스냅샷 조회
 
 **쿼리 파라미터:**
-- `symbols`: 쉼표로 구분된 심볼 목록 (예: "BTC,ETH")
+- `symbols`: 쉼표로 구분된 심볼 목록 (예: "BTC,ETH,SOL")
 
 **응답:**
 ```json
@@ -256,7 +256,7 @@ TELEGRAM_CHAT_ID=your_chat_id_here
       "timestamp": "2024-01-15T12:00:00"
     }
   },
-  "symbols": ["BTC", "ETH"]
+  "symbols": ["BTC", "ETH", "SOL"]
 }
 ```
 
@@ -291,12 +291,12 @@ TELEGRAM_CHAT_ID=your_chat_id_here
 시그널 분석 (룰 기반 엔진)
 
 **쿼리 파라미터:**
-- `symbols`: 쉼표로 구분된 심볼 목록 (예: "BTC,ETH", 기본값: "BTC,ETH")
+- `symbols`: 쉼표로 구분된 심볼 목록 (예: "BTC,ETH,SOL", 기본값: "BTC,ETH,SOL")
 
 **응답:**
 ```json
 {
-  "symbols": ["BTC", "ETH"],
+  "symbols": ["BTC", "ETH", "SOL"],
   "signals": [
     {
       "id": "BTC_funding_overheated",
@@ -336,8 +336,8 @@ TELEGRAM_CHAT_ID=your_chat_id_here
 
 **쿼리 파라미터:**
 - `date`: KST 날짜 (YYYY-MM-DD 형식, 기본값: 오늘)
-- `symbols`: 쉼표로 구분된 심볼 목록 (예: "BTC,ETH", 기본값: "BTC,ETH")
-- `keywords`: 쉼표로 구분된 키워드 목록 (예: "Bitcoin,Ethereum", 기본값: "Bitcoin,Ethereum")
+- `symbols`: 쉼표로 구분된 심볼 목록 (예: "BTC,ETH,SOL", 기본값: "BTC,ETH,SOL")
+- `keywords`: 쉼표로 구분된 키워드 목록 (예: "Bitcoin,Ethereum,Solana", 기본값: "Bitcoin,Ethereum,Solana")
 
 **응답:**
 ```json
@@ -345,7 +345,7 @@ TELEGRAM_CHAT_ID=your_chat_id_here
   "date": "2024-01-15",
   "markdown": "# Crypto Morning Brief — 2024-01-15 (KST)\n...",
   "metadata": {
-    "symbols": ["BTC", "ETH"],
+    "symbols": ["BTC", "ETH", "SOL"],
     "keywords": ["Bitcoin", "Ethereum"],
     "signals_count": 5,
     "regime": "neutral",
@@ -586,7 +586,7 @@ print(f"Market Regime: {result['regime']['label']}")
 
 ```bash
 # 시그널 분석
-curl "http://localhost:8000/api/v1/signals/analyze?symbols=BTC,ETH"
+curl "http://localhost:8000/api/v1/signals/analyze?symbols=BTC,ETH,SOL"
 
 # 모닝 브리프 리포트 생성
 curl "http://localhost:8000/api/v1/report/morning-brief?date=2024-01-15"

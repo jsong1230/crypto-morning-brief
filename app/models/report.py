@@ -29,11 +29,11 @@ class DailyReportRequestV2(BaseModel):
     """Request model for daily report generation (v2)."""
 
     symbols: list[str] = Field(
-        default=["BTC", "ETH"],
+        default=["BTC", "ETH", "SOL"],
         description="List of cryptocurrency symbols to include",
     )
     keywords: list[str] = Field(
-        default=["bitcoin", "ethereum"],
+        default=["bitcoin", "ethereum", "solana"],
         description="List of keywords for news search",
     )
     tz: str = Field(

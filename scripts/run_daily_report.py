@@ -28,8 +28,8 @@ async def generate_daily_report(
     Generate daily report.
 
     Args:
-        symbols: List of cryptocurrency symbols (default: ["BTC", "ETH"]).
-        keywords: List of keywords for news (default: ["bitcoin", "ethereum"]).
+        symbols: List of cryptocurrency symbols (default: ["BTC", "ETH", "SOL"]).
+        keywords: List of keywords for news (default: ["bitcoin", "ethereum", "solana"]).
         tz: Timezone string (default: "Asia/Seoul").
 
     Returns:
@@ -38,9 +38,9 @@ async def generate_daily_report(
     from zoneinfo import ZoneInfo
 
     if symbols is None:
-        symbols = ["BTC", "ETH"]
+        symbols = ["BTC", "ETH", "SOL"]
     if keywords is None:
-        keywords = ["bitcoin", "ethereum"]
+        keywords = ["bitcoin", "ethereum", "solana"]
 
     # Get date in specified timezone
     try:
@@ -151,14 +151,14 @@ async def main():
     parser.add_argument(
         "--symbols",
         nargs="+",
-        default=["BTC", "ETH"],
-        help="Cryptocurrency symbols (default: BTC ETH)",
+        default=["BTC", "ETH", "SOL"],
+        help="Cryptocurrency symbols (default: BTC ETH SOL)",
     )
     parser.add_argument(
         "--keywords",
         nargs="+",
-        default=["bitcoin", "ethereum"],
-        help="News keywords (default: bitcoin ethereum)",
+        default=["bitcoin", "ethereum", "solana"],
+        help="News keywords (default: bitcoin ethereum solana)",
     )
     parser.add_argument(
         "--tz",

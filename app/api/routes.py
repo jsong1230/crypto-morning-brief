@@ -207,14 +207,14 @@ async def generate_daily_report(
 
 @router.get("/market/spot")
 async def get_spot_snapshot(
-    symbols: str = "BTC,ETH",
+    symbols: str = "BTC,ETH,SOL",
     provider: MarketProvider = Depends(get_market_provider),
 ) -> dict:
     """
     Get spot market snapshot.
 
     Args:
-        symbols: Comma-separated list of symbols (e.g., "BTC,ETH").
+        symbols: Comma-separated list of symbols (e.g., "BTC,ETH,SOL").
         provider: MarketProvider instance injected by FastAPI.
 
     Returns:
@@ -231,14 +231,14 @@ async def get_spot_snapshot(
 
 @router.get("/market/derivatives")
 async def get_derivatives_snapshot(
-    symbols: str = "BTC,ETH",
+    symbols: str = "BTC,ETH,SOL",
     provider: MarketProvider = Depends(get_market_provider),
 ) -> dict:
     """
     Get derivatives market snapshot.
 
     Args:
-        symbols: Comma-separated list of symbols (e.g., "BTC,ETH").
+        symbols: Comma-separated list of symbols (e.g., "BTC,ETH,SOL").
         provider: MarketProvider instance injected by FastAPI.
 
     Returns:
@@ -257,14 +257,14 @@ async def get_derivatives_snapshot(
 
 @router.get("/market/news")
 async def get_news_snapshot(
-    keywords: str = "Bitcoin,Ethereum",
+    keywords: str = "Bitcoin,Ethereum,Solana",
     provider: MarketProvider = Depends(get_market_provider),
 ) -> dict:
     """
     Get news snapshot.
 
     Args:
-        keywords: Comma-separated list of keywords (e.g., "Bitcoin,Ethereum").
+        keywords: Comma-separated list of keywords (e.g., "Bitcoin,Ethereum,Solana").
         provider: MarketProvider instance injected by FastAPI.
 
     Returns:
@@ -281,14 +281,14 @@ async def get_news_snapshot(
 
 @router.get("/signals/analyze")
 async def analyze_signals(
-    symbols: str = "BTC,ETH",
+    symbols: str = "BTC,ETH,SOL",
     provider: MarketProvider = Depends(get_market_provider),
 ) -> dict:
     """
     Analyze market signals using rule-based engine.
 
     Args:
-        symbols: Comma-separated list of symbols (e.g., "BTC,ETH").
+        symbols: Comma-separated list of symbols (e.g., "BTC,ETH,SOL").
         provider: MarketProvider instance injected by FastAPI.
 
     Returns:
@@ -322,8 +322,8 @@ async def analyze_signals(
 @router.get("/report/morning-brief")
 async def generate_morning_brief(
     date: str | None = None,
-    symbols: str = "BTC,ETH",
-    keywords: str = "Bitcoin,Ethereum",
+    symbols: str = "BTC,ETH,SOL",
+    keywords: str = "Bitcoin,Ethereum,Solana",
     provider: MarketProvider = Depends(get_market_provider),
     db: Session = Depends(get_db),
 ) -> dict:
@@ -332,7 +332,7 @@ async def generate_morning_brief(
 
     Args:
         date: Date string in KST format (YYYY-MM-DD). If None, uses today.
-        symbols: Comma-separated list of symbols (e.g., "BTC,ETH").
+        symbols: Comma-separated list of symbols (e.g., "BTC,ETH,SOL").
         keywords: Comma-separated list of keywords for news (e.g., "Bitcoin,Ethereum").
         provider: MarketProvider instance injected by FastAPI.
 

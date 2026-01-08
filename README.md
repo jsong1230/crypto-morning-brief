@@ -658,18 +658,7 @@ GitHub Actions를 사용하여 자동으로 리포트를 생성하고 텔레그�
 
 #### 설정 방법
 
-1. **Secrets 설정 (필수):**
-   - GitHub 저장소 → Settings → Secrets and variables → Actions
-   - "New repository secret" 버튼 클릭
-   - 다음 Secrets를 각각 추가:
-     - **Name**: `TELEGRAM_BOT_TOKEN`
-       - **Value**: `8328907437:AAE4VD-l_F6HRtdipMrskFNrEmSHcNuI-AY`
-     - **Name**: `TELEGRAM_CHAT_ID`
-       - **Value**: `57364261`
-   - 각 Secret을 추가한 후 "Add secret" 버튼 클릭
-   - 두 개의 Secret이 모두 추가되었는지 확인
-
-2. **Workflow 확인:**
+1. **Workflow 확인:**
    - `.github/workflows/daily.yml` 파일이 이미 포함되어 있습니다
    - 매일 UTC 23:30 (KST 08:30 다음날)에 자동 실행됩니다
    - `SEND_TELEGRAM=true`로 자동 설정되어 리포트가 텔레그램으로 전송됩니다

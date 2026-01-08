@@ -23,6 +23,7 @@ async def generate_daily_report(
     symbols: list[str] | None = None,
     keywords: list[str] | None = None,
     tz: str = "Asia/Seoul",
+    report_type: str = "daily",
 ) -> str:
     """
     Generate daily report.
@@ -101,6 +102,7 @@ async def generate_daily_report(
         news_snapshot=news_snapshot,
         korea_stocks=korea_stocks,
         us_stocks=us_stocks,
+        report_type=report_type,
     )
 
     logger.info(f"Report generated successfully ({len(markdown)} characters)")
@@ -166,6 +168,12 @@ async def main():
         help="Timezone (default: Asia/Seoul)",
     )
     parser.add_argument(
+        "--report-type",
+        default="daily",
+        choices=["daily", "korea-market", "us-market"],
+        help="Report type: daily (default), korea-market, or us-market",
+    )
+    parser.add_argument(
         "--output",
         type=str,
         help="Output file path (optional, prints to stdout if not specified)",
@@ -178,6 +186,7 @@ async def main():
             symbols=args.symbols,
             keywords=args.keywords,
             tz=args.tz,
+            report_type=args.report_type,
         )
 
         if args.output:

@@ -121,8 +121,8 @@ class SignalEngine:
                     signals.append(signal)
                     regime_rationale.append("BTC dominance shift")
 
-        # Determine market regime
-        regime = self._determine_regime(signals, regime_rationale)
+        # Determine market regime (pass actual data for analysis)
+        regime = self._determine_regime(signals, regime_rationale, spot_snapshot, derivatives_snapshot)
 
         return {
             "signals": signals,
@@ -510,38 +510,131 @@ class SignalEngine:
         return None
 
     def _determine_regime(
-        self, signals: list[dict[str, Any]], rationale: list[str]
+        self, 
+        signals: list[dict[str, Any]], 
+        rationale: list[str],
+        spot_snapshot: dict[str, Any] | None = None,
+        derivatives_snapshot: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         """
-        Determine market regime based on signals.
+        Determine market regime based on signals and actual market data.
 
         Args:
             signals: List of generated signals.
             rationale: List of rationale strings.
+            spot_snapshot: Spot market data for direct analysis.
+            derivatives_snapshot: Derivatives market data for direct analysis.
 
         Returns:
             Regime dictionary with label and rationale.
         """
-        if not signals:
-            return {
-                "label": "neutral",
-                "rationale": ["No significant signals detected"],
-            }
-
         # Count signals by level
         critical_count = sum(1 for s in signals if s["level"] == "critical")
         warn_count = sum(1 for s in signals if s["level"] == "warn")
-        sum(1 for s in signals if s["level"] == "info")
+        info_count = sum(1 for s in signals if s["level"] == "info")
 
-        # Determine regime
+        # Determine regime based on signals first
         if critical_count >= 2:
             label = "risk_off"
         elif critical_count >= 1 or warn_count >= 3:
             label = "risk_off"
         elif warn_count >= 1:
             label = "neutral"
+        elif info_count > 0:
+            # If only info signals, check if they're bullish or bearish
+            bullish_info = sum(1 for s in signals if s["level"] == "info" and "long" in s.get("title", "").lower())
+            bearish_info = sum(1 for s in signals if s["level"] == "info" and ("short" in s.get("title", "").lower() or "drop" in s.get("title", "").lower()))
+            if bullish_info > bearish_info:
+                label = "risk_on"
+            elif bearish_info > bullish_info:
+                label = "risk_off"
+            else:
+                label = "neutral"
         else:
-            label = "risk_on"
+            # No signals - analyze actual market data to determine regime
+            if spot_snapshot and derivatives_snapshot:
+                # Calculate aggregate metrics
+                total_change = 0.0
+                total_funding = 0.0
+                count = 0
+                bearish_indicators = 0
+                bullish_indicators = 0
+                
+                for symbol in set(spot_snapshot.keys()) & set(derivatives_snapshot.keys()):
+                    spot_data = spot_snapshot[symbol]
+                    deriv_data = derivatives_snapshot[symbol]
+                    
+                    change_24h = spot_data.get("change_24h", 0)
+                    funding_rate = deriv_data.get("funding_rate", 0)
+                    funding_rate_24h = deriv_data.get("funding_rate_24h", funding_rate)
+                    
+                    total_change += change_24h
+                    total_funding += abs(funding_rate_24h)
+                    count += 1
+                    
+                    # Bearish indicators
+                    if change_24h < -3:  # Significant price drop
+                        bearish_indicators += 1
+                        if not rationale or f"{symbol}: Price decline" not in rationale:
+                            rationale.append(f"{symbol}: Price decline {change_24h:.2f}%")
+                    if funding_rate_24h > 0.001:  # High positive funding (long squeeze risk)
+                        bearish_indicators += 1
+                        if not rationale or f"{symbol}: High funding" not in rationale:
+                            rationale.append(f"{symbol}: High funding rate {funding_rate_24h*100:.3f}%")
+                    
+                    # Bullish indicators
+                    if change_24h > 3:  # Significant price increase
+                        bullish_indicators += 1
+                        if not rationale or f"{symbol}: Price increase" not in rationale:
+                            rationale.append(f"{symbol}: Price increase {change_24h:.2f}%")
+                    if funding_rate_24h < -0.001:  # Negative funding (short squeeze potential)
+                        bullish_indicators += 1
+                        if not rationale or f"{symbol}: Negative funding" not in rationale:
+                            rationale.append(f"{symbol}: Negative funding rate {funding_rate_24h*100:.3f}%")
+                
+                if count > 0:
+                    avg_change = total_change / count
+                    avg_funding = total_funding / count
+                    
+                    # Determine regime based on actual data
+                    if bearish_indicators > bullish_indicators:
+                        label = "risk_off"
+                    elif bullish_indicators > bearish_indicators:
+                        label = "risk_on"
+                    elif avg_change < -2:  # Average decline > 2%
+                        label = "risk_off"
+                        if not rationale or "Average price decline" not in " ".join(rationale):
+                            rationale.append(f"Average price decline {avg_change:.2f}%")
+                    elif avg_change > 2:  # Average increase > 2%
+                        label = "risk_on"
+                        if not rationale or "Average price increase" not in " ".join(rationale):
+                            rationale.append(f"Average price increase {avg_change:.2f}%")
+                    elif avg_funding > 0.002:  # High average funding
+                        label = "risk_off"
+                        if not rationale or "High funding rates" not in " ".join(rationale):
+                            rationale.append(f"High average funding rate {avg_funding*100:.3f}%")
+                    else:
+                        label = "neutral"
+                else:
+                    label = "neutral"
+            else:
+                # Fallback: use rationale keywords
+                if rationale:
+                    bearish_keywords = ["drop", "decline", "fall", "panic", "liquidation", "risk", "extreme", "overheated"]
+                    bullish_keywords = ["surge", "increase", "rise", "momentum", "growth"]
+                    
+                    rationale_text = " ".join(rationale).lower()
+                    bearish_count = sum(1 for kw in bearish_keywords if kw in rationale_text)
+                    bullish_count = sum(1 for kw in bullish_keywords if kw in rationale_text)
+                    
+                    if bearish_count > bullish_count:
+                        label = "risk_off"
+                    elif bullish_count > bearish_count:
+                        label = "risk_on"
+                    else:
+                        label = "neutral"
+                else:
+                    label = "neutral"
 
         return {
             "label": label,

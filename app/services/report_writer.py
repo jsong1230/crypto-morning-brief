@@ -20,6 +20,7 @@ class ReportWriter:
         news_snapshot: list[dict[str, Any]],
         korea_stocks: dict[str, Any] | None = None,
         us_stocks: dict[str, Any] | None = None,
+        report_type: str = "daily",  # "daily", "korea-market", "us-market"
     ) -> str:
         """
         Generate markdown report.
@@ -37,54 +38,73 @@ class ReportWriter:
         """
         lines = []
 
-        # 1. Title
-        lines.append(f"# 암호화폐 모닝 브리프 — {date} (KST)")
+        # 1. Title (report type에 따라 다르게)
+        if report_type == "korea-market":
+            lines.append(f"# 🇰🇷 한국 주식시장 모닝 브리프 — {date} (KST)")
+        elif report_type == "us-market":
+            lines.append(f"# 🇺🇸 미국 주식시장 모닝 브리프 — {date} (KST)")
+        else:
+            lines.append(f"# 암호화폐 모닝 브리프 — {date} (KST)")
         lines.append("")
 
-        # 2. Market One-liner Summary
-        lines.append("## 📊 시장 요약")
+        # 2. Stock Markets (report type에 따라 순서 변경)
+        if report_type == "korea-market" and korea_stocks:
+            lines.append("## 🇰🇷 한국 주식시장")
+            lines.append("")
+            stock_section = self._generate_stock_section(korea_stocks, None, include_subsection=False)
+            lines.append(stock_section)
+            lines.append("")
+        elif report_type == "us-market" and us_stocks:
+            lines.append("## 🇺🇸 미국 주식시장")
+            lines.append("")
+            stock_section = self._generate_stock_section(None, us_stocks, include_subsection=False)
+            lines.append(stock_section)
+            lines.append("")
+
+        # 3. Market One-liner Summary
+        lines.append("## 📊 암호화폐 시장 요약")
         lines.append("")
         summary = self._generate_market_summary(spot_snapshot)
         lines.append(summary)
         lines.append("")
 
-        # 3. Regime
+        # 4. Regime
         lines.append("## 🎯 시장 국면")
         lines.append("")
         regime_section = self._generate_regime_section(regime)
         lines.append(regime_section)
         lines.append("")
 
-        # 4. Signals Top 5
+        # 5. Signals Top 5
         lines.append("## ⚠️ 주요 시그널")
         lines.append("")
         signals_section = self._generate_signals_section(signals)
         lines.append(signals_section)
         lines.append("")
 
-        # 5. Key Metrics Table
+        # 6. Key Metrics Table
         lines.append("## 📈 주요 지표")
         lines.append("")
         metrics_section = self._generate_metrics_section(spot_snapshot, derivatives_snapshot)
         lines.append(metrics_section)
         lines.append("")
 
-        # 6. Stock Markets (if available)
-        if korea_stocks or us_stocks:
+        # 7. Stock Markets (if not already shown and available)
+        if report_type == "daily" and (korea_stocks or us_stocks):
             lines.append("## 📊 주식시장")
             lines.append("")
             stock_section = self._generate_stock_section(korea_stocks, us_stocks)
             lines.append(stock_section)
             lines.append("")
 
-        # 7. News/Events Summary
+        # 8. News/Events Summary
         lines.append("## 📰 뉴스 & 이벤트")
         lines.append("")
         news_section = self._generate_news_section(news_snapshot)
         lines.append(news_section)
         lines.append("")
 
-        # 8. Scenarios
+        # 9. Scenarios
         lines.append("## 🔮 시장 시나리오")
         lines.append("")
         scenarios_section = self._generate_scenarios_section(
@@ -213,104 +233,55 @@ class ReportWriter:
         spot_snapshot: dict[str, Any],
         derivatives_snapshot: dict[str, Any],
     ) -> str:
-        """Generate key metrics table for BTC and ETH."""
+        """Generate compact key metrics table for BTC, ETH, and SOL."""
         lines = []
+        usd_to_krw = get_usd_to_krw()
 
-        # BTC Metrics
-        btc_spot = spot_snapshot.get("BTC", {})
-        btc_deriv = derivatives_snapshot.get("BTC", {})
+        # Create a compact table with all symbols
+        lines.append("| 심볼 | 가격 | 24h 변동 | 펀딩레이트 | 롱/숏 |")
+        lines.append("|------|------|----------|------------|-------|")
 
-        if btc_spot:
-            lines.append("### BTC")
-            lines.append("")
-            # Get current USD to KRW exchange rate
-            usd_to_krw = get_usd_to_krw()
+        symbols = ["BTC", "ETH", "SOL"]
+        for symbol in symbols:
+            spot_data = spot_snapshot.get(symbol, {})
+            deriv_data = derivatives_snapshot.get(symbol, {})
 
-            # Convert USD to KRW
-            btc_price_usd = btc_spot.get("price", 0)
-            btc_price_krw = btc_price_usd * usd_to_krw
-            btc_volume_krw = btc_spot.get("volume_24h", 0) * usd_to_krw
-            btc_market_cap_krw = btc_spot.get("market_cap", 0) * usd_to_krw
-            btc_high_krw = btc_spot.get("high_24h", 0) * usd_to_krw
-            btc_low_krw = btc_spot.get("low_24h", 0) * usd_to_krw
-
-            lines.append("| 지표 | 값 |")
-            lines.append("|------|-----|")
-            lines.append(f"| 가격 | ₩{btc_price_krw:,.0f} |")
-            lines.append(f"| 24시간 변동 | {btc_spot.get('change_24h', 0):+.2f}% |")
-            lines.append(f"| 24시간 거래량 | ₩{btc_volume_krw:,.0f} |")
-            lines.append(f"| 시가총액 | ₩{btc_market_cap_krw:,.0f} |")
-            lines.append(f"| 24시간 고가 | ₩{btc_high_krw:,.0f} |")
-            lines.append(f"| 24시간 저가 | ₩{btc_low_krw:,.0f} |")
-
-            if btc_deriv:
-                lines.append(
-                    f"| 펀딩 레이트 (8h) | {btc_deriv.get('funding_rate', 0) * 100:.4f}% |"
-                )
-                lines.append(
-                    f"| 펀딩 레이트 (24h) | {btc_deriv.get('funding_rate_24h', 0) * 100:.4f}% |"
-                )
-                oi_krw = btc_deriv.get("open_interest_usd", 0) * usd_to_krw
-                lines.append(f"| 미결제약정 | ₩{oi_krw:,.0f} |")
-                lines.append(f"| 롱/숏 비율 | {btc_deriv.get('long_short_ratio', 0):.3f} |")
-                long_liq_krw = btc_deriv.get("long_liquidation_24h", 0) * usd_to_krw
-                short_liq_krw = btc_deriv.get("short_liquidation_24h", 0) * usd_to_krw
-                lines.append(f"| 롱 청산 (24h) | ₩{long_liq_krw:,.0f} |")
-                lines.append(f"| 숏 청산 (24h) | ₩{short_liq_krw:,.0f} |")
-
-            lines.append("")
-
-        # ETH Metrics
-        eth_spot = spot_snapshot.get("ETH", {})
-        eth_deriv = derivatives_snapshot.get("ETH", {})
-
-        if eth_spot:
-            lines.append("### ETH")
-            lines.append("")
-            # Get current USD to KRW exchange rate
-            usd_to_krw = get_usd_to_krw()
+            if not spot_data:
+                continue
 
             # Convert USD to KRW
-            eth_price_usd = eth_spot.get("price", 0)
-            eth_price_krw = eth_price_usd * usd_to_krw
-            eth_volume_krw = eth_spot.get("volume_24h", 0) * usd_to_krw
-            eth_market_cap_krw = eth_spot.get("market_cap", 0) * usd_to_krw
-            eth_high_krw = eth_spot.get("high_24h", 0) * usd_to_krw
-            eth_low_krw = eth_spot.get("low_24h", 0) * usd_to_krw
+            price_usd = spot_data.get("price", 0)
+            price_krw = price_usd * usd_to_krw
+            change_24h = spot_data.get("change_24h", 0)
+            
+            # Funding rate
+            funding_rate_24h = 0
+            if deriv_data:
+                funding_rate_24h = deriv_data.get("funding_rate_24h", deriv_data.get("funding_rate", 0))
+            
+            # Long/short ratio
+            long_short_ratio = 0
+            if deriv_data:
+                long_short_ratio = deriv_data.get("long_short_ratio", 0)
+            
+            # Format values
+            price_str = f"₩{price_krw:,.0f}"
+            change_emoji = "🟢" if change_24h > 0 else "🔴" if change_24h < 0 else "⚪"
+            change_str = f"{change_emoji} {change_24h:+.2f}%"
+            funding_str = f"{funding_rate_24h * 100:.4f}%" if funding_rate_24h != 0 else "-"
+            ls_str = f"{long_short_ratio:.2f}" if long_short_ratio > 0 else "-"
 
-            lines.append("| 지표 | 값 |")
-            lines.append("|------|-----|")
-            lines.append(f"| 가격 | ₩{eth_price_krw:,.0f} |")
-            lines.append(f"| 24시간 변동 | {eth_spot.get('change_24h', 0):+.2f}% |")
-            lines.append(f"| 24시간 거래량 | ₩{eth_volume_krw:,.0f} |")
-            lines.append(f"| 시가총액 | ₩{eth_market_cap_krw:,.0f} |")
-            lines.append(f"| 24시간 고가 | ₩{eth_high_krw:,.0f} |")
-            lines.append(f"| 24시간 저가 | ₩{eth_low_krw:,.0f} |")
-
-            if eth_deriv:
-                lines.append(
-                    f"| 펀딩 레이트 (8h) | {eth_deriv.get('funding_rate', 0) * 100:.4f}% |"
-                )
-                lines.append(
-                    f"| 펀딩 레이트 (24h) | {eth_deriv.get('funding_rate_24h', 0) * 100:.4f}% |"
-                )
-                oi_krw = eth_deriv.get("open_interest_usd", 0) * usd_to_krw
-                lines.append(f"| 미결제약정 | ₩{oi_krw:,.0f} |")
-                lines.append(f"| 롱/숏 비율 | {eth_deriv.get('long_short_ratio', 0):.3f} |")
-                long_liq_krw = eth_deriv.get("long_liquidation_24h", 0) * usd_to_krw
-                short_liq_krw = eth_deriv.get("short_liquidation_24h", 0) * usd_to_krw
-                lines.append(f"| 롱 청산 (24h) | ₩{long_liq_krw:,.0f} |")
-                lines.append(f"| 숏 청산 (24h) | ₩{short_liq_krw:,.0f} |")
+            lines.append(f"| {symbol} | {price_str} | {change_str} | {funding_str} | {ls_str} |")
 
         return "\n".join(lines)
 
     def _generate_news_section(self, news_snapshot: list[dict[str, Any]]) -> str:
-        """Generate news section (max 5 items)."""
+        """Generate news section (max 3 items for summary)."""
         if not news_snapshot:
             return "현재 시점에서 중요한 뉴스나 이벤트가 없습니다."
 
         lines = []
-        for news in news_snapshot[:5]:  # Max 5 items
+        for news in news_snapshot[:3]:  # Max 3 items for summary
             title = news.get("title", "Untitled")
             source = news.get("source", "Unknown")
             published_at = news.get("published_at", "")
@@ -334,9 +305,6 @@ class ReportWriter:
                     date_str = published_at
 
             lines.append(f"**{sentiment_emoji} {title}**")
-            lines.append(f"- 출처: {source}")
-            if date_str:
-                lines.append(f"- 발행일: {date_str}")
             if url:
                 lines.append(f"- [자세히 보기]({url})")
             lines.append("")
@@ -347,13 +315,15 @@ class ReportWriter:
         self,
         korea_stocks: dict[str, Any] | None,
         us_stocks: dict[str, Any] | None,
+        include_subsection: bool = True,
     ) -> str:
         """Generate stock market section."""
         lines = []
 
         if korea_stocks:
-            lines.append("### 🇰🇷 한국 주식시장")
-            lines.append("")
+            if include_subsection:
+                lines.append("### 🇰🇷 한국 주식시장")
+                lines.append("")
             lines.append("| 지수 | 현재가 | 24h 변화 | 거래량 |")
             lines.append("|------|--------|----------|--------|")
 
@@ -369,11 +339,13 @@ class ReportWriter:
                 lines.append(f"| {symbol} | {price:,.2f} | {change_emoji} {change_str} | {volume_str} |")
 
             lines.append("")
-            lines.append("")
+            if include_subsection:
+                lines.append("")
 
         if us_stocks:
-            lines.append("### 🇺🇸 미국 주식시장")
-            lines.append("")
+            if include_subsection:
+                lines.append("### 🇺🇸 미국 주식시장")
+                lines.append("")
             lines.append("| 지수 | 현재가 | 24h 변화 | 거래량 |")
             lines.append("|------|--------|----------|--------|")
 
@@ -464,8 +436,8 @@ class ReportWriter:
         if not triggers:
             triggers.append("주요 저항선 돌파 시 상승 가능성")
         
-        # Show top 3 most relevant triggers
-        for trigger in triggers[:3]:
+        # Show top 2 most relevant triggers for summary
+        for trigger in triggers[:2]:
             lines.append(f"- {trigger}")
         lines.append("")
 
@@ -475,31 +447,31 @@ class ReportWriter:
         
         # Volatility check
         if abs(btc_change) < 2 and abs(eth_change) < 2:
-            triggers.append(f"낮은 변동성 (BTC: {btc_change:+.2f}%, ETH: {eth_change:+.2f}%) - 범위 내 움직임")
+            triggers.append(f"낮은 변동성 (BTC: {btc_change:+.2f}%, ETH: {eth_change:+.2f}%)")
         elif abs(btc_change) < 3 and abs(eth_change) < 3:
             triggers.append(f"중간 변동성 (BTC: {btc_change:+.2f}%, ETH: {eth_change:+.2f}%)")
         
         # Funding rate neutral
         if abs(btc_funding) < 0.001 and abs(eth_funding) < 0.001:
-            triggers.append(f"펀딩 레이트 중립 (BTC: {btc_funding*100:.4f}%, ETH: {eth_funding*100:.4f}%) - 균형 상태")
+            triggers.append(f"펀딩 레이트 중립 (균형 상태)")
         elif abs(btc_funding) < 0.002:
-            triggers.append(f"BTC 펀딩 레이트 중립 ({btc_funding*100:.4f}%)")
+            triggers.append(f"BTC 펀딩 레이트 중립")
         
         # Long/short ratio balanced
         if 0.9 <= btc_long_short <= 1.1:
-            triggers.append(f"롱/숏 비율 균형 (BTC: {btc_long_short:.2f})")
+            triggers.append(f"롱/숏 비율 균형")
         
         # Signal status
         if warn_count > 0 and critical_count == 0:
-            triggers.append(f"일부 경고 시그널 ({warn_count}개) 있으나 중요한 문제 없음")
+            triggers.append(f"일부 경고 시그널 ({warn_count}개)")
         elif warn_count == 0 and critical_count == 0:
-            triggers.append("중요 시그널 없음 - 안정적 상태")
+            triggers.append("중요 시그널 없음")
         
         # Default
         if not triggers:
-            triggers.append("지지선과 저항선 사이에서 가격 정체 가능")
+            triggers.append("지지선과 저항선 사이에서 가격 정체")
         
-        for trigger in triggers[:3]:
+        for trigger in triggers[:2]:
             lines.append(f"- {trigger}")
         lines.append("")
 
@@ -510,11 +482,11 @@ class ReportWriter:
         # Critical signals
         if critical_count >= 1:
             critical_signals = [s.get("title", "Unknown") for s in signals if s.get("level") == "critical"]
-            triggers.append(f"중요 시그널 {critical_count}개 감지: {', '.join(critical_signals[:2])}")
+            triggers.append(f"중요 시그널 {critical_count}개 감지")
         
         # Price drop
         if btc_change < -5 or eth_change < -5:
-            triggers.append(f"급격한 가격 하락 (BTC: {btc_change:+.2f}%, ETH: {eth_change:+.2f}%) - 매도 압력 증가")
+            triggers.append(f"급격한 가격 하락 (BTC: {btc_change:+.2f}%, ETH: {eth_change:+.2f}%)")
         elif btc_change < -3 or eth_change < -3:
             triggers.append(f"가격 하락 (BTC: {btc_change:+.2f}%, ETH: {eth_change:+.2f}%)")
         elif btc_change < 0 and eth_change < 0:
@@ -522,31 +494,25 @@ class ReportWriter:
         
         # High funding rate (long squeeze risk)
         if btc_funding > 0.01:
-            triggers.append(f"펀딩 레이트 매우 높음 (BTC: {btc_funding*100:.4f}%) - 롱 스퀴즈 리스크 높음")
+            triggers.append(f"펀딩 레이트 매우 높음 - 롱 스퀴즈 리스크")
         elif btc_funding > 0.005:
-            triggers.append(f"펀딩 레이트 높음 (BTC: {btc_funding*100:.4f}%) - 롱 포지션 부담")
+            triggers.append(f"펀딩 레이트 높음")
         
         # Extreme long/short ratio
         if btc_long_short > 1.5:
-            triggers.append(f"극단적 롱/숏 비율 (BTC: {btc_long_short:.2f}) - 과도한 레버리지 롱 포지션")
+            triggers.append(f"극단적 롱/숏 비율 (BTC: {btc_long_short:.2f})")
         elif btc_long_short > 1.3:
-            triggers.append(f"높은 롱/숏 비율 (BTC: {btc_long_short:.2f}) - 롱 포지션 과다")
-        
-        # Liquidation risk
-        if btc_long_liq > 0 and btc_oi > 0:
-            liq_ratio = (btc_long_liq / btc_oi) * 100 if btc_oi > 0 else 0
-            if liq_ratio > 0.1:
-                triggers.append(f"청산 리스크 높음 (롱 청산: ${btc_long_liq/1_000_000:.1f}M, OI 대비 {liq_ratio:.2f}%)")
+            triggers.append(f"높은 롱/숏 비율")
         
         # Warning signals
         if warn_count >= 2:
-            triggers.append(f"경고 시그널 다수 ({warn_count}개) - 주의 필요")
+            triggers.append(f"경고 시그널 다수 ({warn_count}개)")
         
         # Default
         if not triggers:
-            triggers.append("주요 지지선 이탈 시 추가 하락 가능성")
+            triggers.append("주요 지지선 이탈 시 추가 하락 가능")
         
-        for trigger in triggers[:3]:
+        for trigger in triggers[:2]:
             lines.append(f"- {trigger}")
 
         return "\n".join(lines)
